@@ -1,0 +1,18 @@
+# patient-level data and derived files must never be committed (PhysioNet DUA)
+data/
+*.csv.gz
+preds/
+preds_ens/
+preds_val/
+logs/
+*.npz
+__pycache__/
+*.pyc
+*.csv
+*.pt
+*.pth
+*.pkl
+*.joblib
+build/
+*.o
+*.so

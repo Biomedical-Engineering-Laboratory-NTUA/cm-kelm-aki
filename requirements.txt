@@ -1,0 +1,10 @@
+# CPU pipeline
+numpy>=1.26
+scipy>=1.11
+pandas>=2.1
+scikit-learn>=1.4
+xgboost>=2.0
+lightgbm>=4.1
+matplotlib>=3.8
+# GPU fitness (optional; choose the wheel that matches your CUDA, e.g. cupy-cuda12x)
+# cupy-cuda12x>=13
