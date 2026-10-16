@@ -2,16 +2,13 @@
 Adaptive Cultural-Memetic DE for full-cohort Nystrom-KELM.
 ==========================================================
 
-Motivation (results of 26-27 Sep 2026)
---------------------------------------
-* The static CM-KELM search saturates early: the best fitness plateaus
-  around generation 5, and doubling the budget (40/30) adds nothing.
-* Averaging models from 3 independent seeds gives AUROC 0.850 against 0.841
-  for one seed, and a population ensemble from ONE run reaches 0.848.
-  Diversity is what the ensemble feeds on, and convergence destroys it.
-
-Goal: keep the diversity of independent runs inside a single run, without
-losing solution quality. Target: single-run population ensemble >= 0.850 / 0.248.
+Motivation
+----------
+In preliminary runs the static search plateaued around generation 5, and
+ensembles over seeds outperformed single runs: diversity is what the ensemble
+feeds on, and convergence destroys it. The mechanisms below try to keep that
+diversity inside a single run without losing solution quality. In the paper's
+equal-budget comparisons none of them improved significantly.
 
 Mechanisms (each an independent flag, for ablation)
 ---------------------------------------------------
@@ -38,7 +35,7 @@ H  hetero_islands   Heterogeneous islands. Each topographic island starts from
                     with K on, adapts its own probabilities. Island champions
                     then differ systematically, which is what the ensemble needs.
 
-R  robust_fitness   Noisy-optimisation mode (added 27 Sep 2026). The confirmatory
+R  robust_fitness   Noisy-optimisation mode. The confirmatory
                     runs showed the search fitting the noise of a FIXED inner CV
                     (same 3 folds, same landmarks): CV fitness keeps rising while
                     test performance does not. With R the folds are re-drawn every

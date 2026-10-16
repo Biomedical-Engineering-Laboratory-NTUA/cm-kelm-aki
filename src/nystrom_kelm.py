@@ -1,54 +1,21 @@
 """
-Nystrom-approximated KELM -- first draft, addressing the scalability bottleneck.
-======================================================================
+Class-weighted Nystrom kernel extreme learning machine (KELM).
+==============================================================
 
-STATUS: first working implementation, deliberately NOT presented as a
-finished design. Built specifically to give Prof. Cafaro something
-concrete to react to and improve, rather than an open-ended request.
+Exact KELM needs an n x n solve, impractical at n ~ 35,000 when it is repeated
+hundreds of times inside the evolutionary search. The Nystrom method
+(Williams & Seeger 2001) uses m << n landmarks:
+  1. select m landmarks from the training set (uniform random by default);
+  2. K_mm = V Lambda V^T (eigendecomposition) and K_nm (training points x landmarks);
+  3. explicit feature map U = K_nm V Lambda^{-1/2} (n x m);
+  4. class-weighted ridge solve (U^T W U + lambda I) alpha = U^T W t,
+     t in {-1, +1}, W_ii = n / (2 n_c(i)), so that both classes carry equal weight;
+  5. predicted risk sigma(k(x, L) V Lambda^{-1/2} alpha), sigma the logistic function.
+Cost O(n m^2 + m^3) instead of O(n^3). For numerical stability a ridge of 1e-8
+is added to K_mm and its eigenvalues are clipped at 1e-10.
 
-The problem this addresses (see Status_Report_For_Cafaro / manuscript
-Section 3.9.1): exact KELM requires an n x n linear solve, impractical
-at n ~ 36,000 (our real training-set size) when repeated hundreds of
-times inside the evolutionary search. The Nystrom method approximates
-the kernel matrix using a small set of m << n "landmark" points, reducing
-the solve to O(n*m^2 + m^3) instead of O(n^3) -- at m=500 vs n=36,000,
-roughly a 5000x reduction in the dominant cubic term.
-
-Method (standard Nystrom kernel ridge regression, e.g. Williams &
-Seeger 2001):
-  1. Select m landmark points from the training set.
-  2. Compute K_mm (m x m kernel matrix among landmarks) and
-     K_nm (n x m kernel matrix between all training points and landmarks).
-  3. Form U = K_nm @ K_mm^{-1/2} (an n x m explicit low-rank feature map
-     approximating the implicit kernel feature space).
-  4. Solve ordinary (m-dimensional) ridge regression in U-space:
-     alpha = (U^T U + lambda I_m)^{-1} U^T t -- an m x m solve, not n x n.
-  5. Predict via f(x) = k(x, landmarks) @ K_mm^{-1/2} @ alpha.
-
-OPEN QUESTIONS -- flagged for Prof. Cafaro's review (see also the email
-thread and Status_Report_For_Cafaro.docx):
-
-  1. Landmark selection: currently uniform random subsampling. Is
-     k-means++ centers, leverage-score sampling (Alaoui & Mahoney 2015),
-     or some GPU-accelerated selection strategy preferable for this
-     cohort's feature distribution (37 features, 4.8% positive rate)?
-  2. Number of landmarks (m): currently a free parameter, not yet tuned
-     or theoretically justified for this problem's accuracy/speed
-     trade-off. What m is actually needed to preserve prediction quality
-     relative to exact KELM, empirically, on this data?
-  3. K_mm^{-1/2} computation: currently via eigendecomposition with a
-     small ridge for numerical stability. At larger m this itself
-     becomes a cost worth optimizing -- is this a good target for your
-     CUDA/GPU expertise specifically (batched eigendecomposition,
-     or an alternative formulation avoiding the matrix square root)?
-  4. Whether landmark selection and/or K_nm computation should reuse the
-     existing OpenMP/CUDA kernel-matrix code (kelm_kernel_omp.c /
-     kelm_kernel_cuda.cu) as a building block, or whether the Nystrom
-     structure calls for a different computational pattern entirely.
-  5. Interaction with the evolutionary search: should landmarks be
-     resampled every fitness evaluation (more accurate, more expensive)
-     or fixed once per generation / for the whole run (cheaper, some
-     risk of landmark-set-specific bias)? Not yet decided.
+Options not used in the paper: rank-k Nystrom (`rank`), a relative eigenvalue
+threshold (`eig_rtol`) and k-means++ landmarks (`landmark_strategy="kmeanspp"`).
 """
 
 import numpy as np
@@ -89,19 +56,12 @@ class NystromKELM:
     def _select_landmarks(self, X, m):
         n = X.shape[0]
         if self.landmark_strategy == "random":
-            # OPEN QUESTION 1 (original): uniform random -- simplest choice.
+            # uniform random landmarks (default, used in the paper)
             idx = self.rng.choice(n, m, replace=False)
             return X[idx]
 
         elif self.landmark_strategy == "kmeanspp":
-            # First concrete improvement attempt: k-means++ seeding, which
-            # spreads landmarks to cover the feature space more evenly than
-            # uniform random, at the cost of an O(n*m) seeding pass (cheap
-            # relative to the O(n*m^2 + m^3) Nystrom solve itself).
-            # Still open: whether leverage-score sampling (Alaoui & Mahoney
-            # 2015) would do meaningfully better, and whether this seeding
-            # pass itself is worth GPU-accelerating at large n -- both
-            # flagged for Prof. Cafaro's review, not resolved here.
+            # optional k-means++ seeding (not used in the paper)
             centers_idx = [self.rng.integers(n)]
             closest_sq_dist = np.sum((X - X[centers_idx[0]]) ** 2, axis=1)
             for _ in range(1, m):

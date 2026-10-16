@@ -1,6 +1,6 @@
 """
-Subgroup discrimination on the test set (reviewer request: performance by sex, urgency,
-age and surgical department). Output is AGGREGATE only (n, events, AUROC/AUPRC with
+Subgroup discrimination on the test set (by sex, urgency, age and surgical
+department). Output is AGGREGATE only (n, events, AUROC/AUPRC with
 bootstrap 95% CI per subgroup and model) and may leave the server.
 
 Subgroups are read from the test-set design matrix of cohort_split.load_split

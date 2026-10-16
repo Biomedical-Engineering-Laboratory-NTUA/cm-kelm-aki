@@ -1,30 +1,13 @@
 """
-INSPIRE feature-engineering pipeline -- REBUILT on the official schema.
-======================================================================
+INSPIRE (v1.4.2): loading, cohort criteria, preoperative features and the KDIGO label.
+=====================================================================================
 
-Source of truth for every column name below: the dataset's own
-`schema.csv` (retrieved and confirmed from the real downloaded files on
-the lab server, 7 Sep 2026) plus the real CSV headers of each table
-(confirmed via `zcat *.csv.gz | head -1` on the server). This SUPERSEDES
-the earlier version of this module, which had inferred several
-`operations.csv` columns (the `preop_*` lab fields) from a third-party
-sample script (vitaldb/inspire gbm_mortality.py) that turned out not to
-match the real, current table structure.
-
-KEY CORRECTION from the previous version:
-    operations.csv does NOT contain precomputed preop_creatinine,
-    preop_hb, etc. columns. All laboratory values -- pre- and
-    post-operative alike -- live ONLY in labs.csv, in long format
-    (subject_id, chart_time, item_name, value). Preoperative lab
-    features must be extracted by filtering item_name and taking the
-    most recent value before surgery, exactly like the postoperative
-    values used for the KDIGO label.
-
-Both corrections are now fully resolved: this version uses the real,
-confirmed operations.csv/labs.csv schema (from schema.csv) AND the real,
-confirmed labs.csv item_name labels (from parameters.csv), both verified
-against the actual files on the lab server on 7 Sep 2026. No placeholder
-column names or item_name guesses remain in this module.
+Column names follow the dataset's schema.csv and laboratory item names its
+parameters.csv. All laboratory values live in labs.csv in long format
+(subject_id, chart_time, item_name, value). Preoperative features take the most
+recent value within one year before anaesthesia start; the KDIGO label uses
+the creatinine values from leaving the operating room up to 7 days later, so no
+postoperative information enters the features.
 """
 
 import numpy as np
@@ -68,7 +51,7 @@ DEPARTMENT_MAP = {
 
 # ----------------------------------------------------------------------
 # CONFIRMED item_name strings for labs.csv, verified against the real
-# parameters.csv (7 Sep 2026). All labs table entries use these exact
+# parameters.csv. All labs table entries use these exact
 # lowercase labels.
 # ----------------------------------------------------------------------
 CREATININE_ITEM_NAME = "creatinine"
@@ -340,8 +323,7 @@ def apply_cohort_criteria(operations, labs, window_days=7,
                            esrd=None, diagnosis=None,
                            verbose=True):
     """
-    Applies the inclusion/exclusion criteria stated in the manuscript's
-    Materials section (4.2):
+    Applies the inclusion/exclusion criteria of the paper (Materials and Methods):
       - require a preoperative baseline creatinine (needed to determine
         AKI status at all -- cases without one CANNOT be silently
         labeled "no AKI", they must be excluded)
@@ -349,17 +331,15 @@ def apply_cohort_criteria(operations, labs, window_days=7,
         `window_days` (same reasoning: no follow-up means AKI status is
         genuinely unknown, not negative)
       - optionally retain only the first eligible procedure per patient
-        (subject_id), consistent with the "first eligible procedure per
-        patient retained" criterion already stated in Materials 4.2 --
-        avoids repeated-measures non-independence across operations of
-        the same patient
+        (subject_id) -- avoids repeated-measures non-independence across
+        operations of the same patient
       - optionally exclude cases with an implausibly high baseline
         creatinine suggestive of pre-existing ESRD/dialysis dependence
         (disabled by default: this is a coarse heuristic, not a real
         ESRD flag -- a proper implementation would check diagnosis.csv
         for relevant ICD-10-CM codes, left as a future refinement)
 
-      - esrd="cr4_z49" (recommended, 27 Sep 2026): after the first-procedure
+      - esrd="cr4_z49" (primary analysis): after the first-procedure
         step, exclude patients with pre-existing kidney failure, defined as
         baseline creatinine >= 4.0 mg/dL OR an ICD-10 Z49 (dialysis care) code
         recorded BEFORE anaesthesia start. esrd="cr4_z49_n18" also excludes
@@ -394,7 +374,11 @@ def apply_cohort_criteria(operations, labs, window_days=7,
                       f"(coarse pre-existing-ESRD heuristic)", len(ops)))
 
     if first_procedure_only:
-        ops = ops.sort_values("anstart_time").groupby("subject_id", as_index=False).first()
+        # keep the whole first row per patient. (GroupBy.first() would take the first
+        # NON-NULL value of each column separately, filling missing values of the first
+        # operation from a later one.) Rows stay ordered by subject_id, as before.
+        ops = (ops.sort_values("anstart_time").drop_duplicates("subject_id", keep="first")
+               .sort_values("subject_id").reset_index(drop=True))
         steps.append(("+ first eligible procedure per patient only", len(ops)))
 
     if esrd is not None:
@@ -457,8 +441,7 @@ def compare_included_vs_excluded(operations_full, included_op_ids,
     apply_cohort_criteria(), across key variables -- intended to
     characterize (not hide) the selection bias introduced mainly by the
     "postoperative creatinine within window" requirement, for reporting
-    in the manuscript's Discussion/Limitations section (e.g. as a
-    Table 1-style included-vs-excluded comparison).
+    (e.g. as a Table 1-style included-vs-excluded comparison).
 
     numeric_cols: compared via group mean/median/std + Mann-Whitney U test
                   (non-parametric, robust to the skewed distributions

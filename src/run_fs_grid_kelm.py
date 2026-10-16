@@ -1,7 +1,7 @@
 """
 Control: grid-tuned Nystrom-KELM on a feature subset chosen by a STANDARD selector
-(instead of the evolutionary mask). Answers the reviewer question "is the gain of
-CM-KELM just feature selection, which any filter/embedded method would give?".
+(instead of the evolutionary mask). Tests whether the gain of CM-KELM
+is just feature selection, which any filter or embedded method would give.
 
 Selectors (fitted on the training set only):
   l1   L1-penalised logistic regression (balanced weights); C chosen by the same

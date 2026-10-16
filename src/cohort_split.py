@@ -1,30 +1,25 @@
 """
-Single source of truth for cohort + train/test split.
-=====================================================
+Cohort, features and the fixed train/test split (single source of truth).
+=========================================================================
 
-Reproduces EXACTLY the preprocessing used in run_fullcohort_cmkelm_v2/v3
-(and run_real_data_first_pass for the baselines): cohort criteria,
-feature matrix, KDIGO label, stratified 70/30 split with random_state=42,
-median imputation and standard scaling fitted on the training set only.
+Cohort criteria (inspire_preprocessing.apply_cohort_criteria), feature matrix,
+KDIGO label, stratified 70/30 split with random_state=42, and median imputation
+and standard scaling fitted on the training set only. Every model therefore sees
+the same test patients, as the paired tests of stats_eval.py require.
 
-Keeping this in one place guarantees that every model's saved predictions
-refer to the same 15,434 test cases, which stats_eval.py requires for
-paired comparisons (DeLong, paired bootstrap).
-
-max_baseline_creatinine=None reproduces the current cohort (51,445).
-Setting it (e.g. 4.0) enables the ESRD/dialysis heuristic exclusion --
-this CHANGES the cohort, so never mix predictions from the two settings.
-
-esrd="cr4_z49" (chosen 27 Sep 2026): exclude pre-existing kidney failure
-(baseline creatinine >= 4 mg/dL or pre-operative ICD-10 Z49), see
-inspire_preprocessing.esrd_op_ids. Cohort tag "esrd".
-
-features="eos": append the end-of-surgery features produced by
-intraop_features.py (features_intraop.csv.gz, joined on op_id). The 70/30
-split depends only on the cohort and the label, so the preoperative and the
-end-of-surgery models of the same cohort share the same test cases and can be
-compared pairwise. Appended columns go AFTER the preoperative ones, so the
-protected-feature indices (0 = age, 5 = preop_creatinine) are unchanged.
+esrd (exclusion of pre-existing kidney failure; cohort tag "esrd"):
+  cr4_z49      baseline creatinine >= 4 mg/dL or pre-operative ICD-10 Z49 (primary)
+  cr2_z49      baseline creatinine >= 2 mg/dL or Z49 (sensitivity analysis)
+  cr4_z49_n18  cr4_z49 plus pre-operative N18 (sensitivity analysis)
+features:
+  preop  37 preoperative variables
+  eos    + end-of-surgery variables of intraop_features.py (features_intraop.csv.gz, joined on op_id)
+  eos2   eos without constant columns and the duplicated cumulative maxima (93 variables, final set)
+The split depends only on the cohort and the label, so the preoperative and
+end-of-surgery models of one cohort share the same test patients. End-of-surgery
+columns follow the preoperative ones, so the protected indices (0 = age,
+5 = preop_creatinine) are unchanged. max_baseline_creatinine is a legacy option,
+not used in the paper.
 """
 
 import os
@@ -79,7 +74,7 @@ def load_split(data_dir=DATA_DIR, dummy=False, max_baseline_creatinine=None, ver
             print(f"dropping all-missing end-of-surgery columns: {empty}", flush=True)
             X_df = X_df.drop(columns=empty)
         if features == "eos2":
-            # final feature set (2 Oct 2026): drop end-of-surgery columns with a single value
+            # final feature set: drop end-of-surgery columns with a single value
             # in the cohort (e.g. pre_contrast, no V08 codes) and the *_max duplicates of
             # incrementally charted volumes (ebl_max, uo_max; *_sum are the totals)
             const = [c for c in intra.columns if c in X_df and X_df[c].nunique(dropna=True) <= 1]

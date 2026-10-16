@@ -1,21 +1,19 @@
 """
-Baselines on the full cohort, saving test-set predictions for stats_eval.py.
-===========================================================================
+Baselines on the same split, saving test-set predictions for stats_eval.py.
+==========================================================================
 
-Models (same settings as run_real_data_first_pass.py):
-  logistic_regression, random_forest, mlp
-  xgboost / lightgbm        -- only if the package is installed (skipped otherwise)
-  nystrom_kelm_grid_m{m}    -- THE KEY CONTROL for the paper: Nystrom-KELM
-                               with gamma/lambda chosen by plain grid search
-                               (same inner 3-fold CV AUPRC as the evolutionary
-                               fitness, all 37 features, same m). Any gain of
-                               CM-KELM over this is attributable to the
-                               evolutionary search itself, not to KELM/Nystrom.
+  logistic_regression, random_forest (300 trees)      class-balanced
+  xgboost, lightgbm (400 trees, learning rate 0.05, depth 5 / 31 leaves, row and
+                     column subsampling 0.8)          if installed
+  mlp                                                  not reported in the paper
+  nystrom_kelm_grid_m{m}[_wide]  the key control: Nystrom-KELM on all variables, with
+                     (gamma, lambda) chosen by grid search on the criterion of the
+                     CM-KELM fitness (3-fold CV AUPRC). --wide-grid = the 8 x 6 grid
+                     of the paper (name suffix _wide).
 
 Usage (always via srun/sbatch, unbuffered):
-    python -u run_baselines_preds.py                       # all baselines, m=500 and 1000
-    python -u run_baselines_preds.py --grid-m 500 1000 2000
-    python -u run_baselines_preds.py --skip-grid           # classical baselines only (~1 min)
+    python -u run_baselines_preds.py --grid-m 1000 --esrd cr4_z49 --features eos2 --wide-grid
+    python -u run_baselines_preds.py --skip-grid           # classical baselines only
     python -u run_baselines_preds.py --dummy               # smoke test, no real data
 """
 
@@ -37,7 +35,7 @@ from stats_eval import save_predictions
 RANDOM_STATE = 42
 GAMMAS = [0.003, 0.01, 0.03, 0.1, 0.3]
 LAMBDAS = [0.01, 0.1, 1.0, 10.0]
-# wider grid (reviewer check: the default optimum may lie on the grid boundary)
+# grid of the paper (the initial 5 x 4 grid above selected its smallest gamma)
 GAMMAS_WIDE = [0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0]
 LAMBDAS_WIDE = [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
 

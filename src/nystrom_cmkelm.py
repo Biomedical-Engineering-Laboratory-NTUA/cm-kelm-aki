@@ -1,23 +1,19 @@
 """
-Full-cohort CM-KELM via Nystrom approximation.
-======================================================================
+CM-KELM: evolutionary search over a class-weighted Nystrom-KELM on the full training cohort.
+=========================================================================================
 
-Replaces the exact KELM inside the DE + Cultural + Memetic search with
-NystromKELM, making it possible to run the evolutionary search on the
-FULL training cohort (n~36,000) instead of a small subsample -- exact
-KELM's O(n^3) solve made this infeasible (Section 3.9.1 of the
-manuscript; ~12-13 minutes per single fit at this scale, repeated
-hundreds of times per run).
+Genome [log gamma, log lambda, z_1..z_d]; variable j is selected when z_j > 0.
+Fitness: mean AUPRC of a stratified 3-fold CV on the training set (fixed folds
+and landmarks) minus 0.001 x the number of selected variables.
 
-The genome, Cultural belief space, and memetic layer are unchanged from
-kelm_variant.CMKELM -- only the base model inside the fitness function
-is swapped. n_landmarks is currently a FIXED hyperparameter of the
-search (not itself evolved), consistent with the open questions flagged
-for Prof. Cafaro in nystrom_kelm.py -- evolving it too is a natural
-future extension once we have his view on the right operating point.
-
-STATUS: first integration, not yet benchmarked end-to-end on real data
-(that benchmark is the natural next step once this is reviewed).
+Search: DE/rand/1/bin (F = 0.6, CR = 0.7, a trial replaces its target only if its
+fitness is higher), guided by the cultural belief space of cmeelm.py
+(normative ranges, situational exemplar, topographic islands, domain knowledge:
+protected clinical variables are never deselected), and a Lamarckian Gaussian
+hill-climb on the best 10 % of the population after each generation.
+use_cultural=False / use_memetic=False give the component ablations; the
+protection of the clinical variables is applied in every variant.
+The number of landmarks is fixed during the search.
 """
 
 import numpy as np

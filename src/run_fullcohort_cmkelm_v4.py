@@ -1,26 +1,19 @@
 """
-Full-cohort CM-KELM (Nystrom) -- v4: parameterized, multi-seed, saves predictions.
-================================================================================
+CM-KELM runner: one evolutionary search per seed, saving test-set predictions.
+=============================================================================
 
-Replaces the one-file-per-run pattern (v1/v2/v3) with command-line arguments,
-and fixes two issues found on 25 Sep 2026:
+The test set is always the same (split seed 42, cohort_split.py). --seed changes
+only the evolutionary search (initial population and DE randomness); the CV folds
+and landmarks of the fitness are fixed. Each run writes
+  preds/<name>.npz                     best individual
+  preds/<name>__popens_<strategy>.npz  population ensembles (islands, topk:5, diverse:5)
+  preds/<name>.json                    metrics, fitness-evaluation counts, traces
 
-  1. Output buffering: v3 was piped through `tee`, so Python block-buffered
-     stdout and the log stayed at 0 bytes until the end. Every print here
-     uses flush=True; run with `python -u` as well.
-  2. No saved predictions: v1-v3 printed AUROC/AUPRC only, so no CI or
-     paired test (DeLong) was possible afterwards. v4 saves
-     preds/cmkelm_m{m}_p{pop}_g{gen}_s{seed}.npz for stats_eval.py.
-
-The test set is ALWAYS the same (split seed 42, see cohort_split.py).
---seed only changes the evolutionary search (initial population, landmarks,
-DE randomness), so runs with different --seed are directly comparable and
-give the seed-to-seed spread the paper needs.
-
-Examples (via srun/sbatch):
-    python -u run_fullcohort_cmkelm_v4.py --m 1000 --pop 12 --gen 8 --seed 42   # = Run 3, with preds
-    python -u run_fullcohort_cmkelm_v4.py --m 500  --pop 20 --gen 15 --seed 42  # = Run 2, with preds
-    for s in 1 2 3; do python -u run_fullcohort_cmkelm_v4.py --m 1000 --pop 12 --gen 8 --seed $s; done
+The paper uses --pop 20 --gen 15 (see ../slurm/jobs_gpu.sh), for example
+    python -u run_fullcohort_cmkelm_v4.py --backend gpu --m 1000 --pop 20 --gen 15 \
+        --seed 1 --esrd cr4_z49 --features eos2
+    ... --gen 23 --no-cultural --no-memetic      # component ablation: plain DE
+Every print is flushed; run with `python -u` under Slurm.
 """
 
 import argparse

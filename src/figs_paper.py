@@ -21,16 +21,16 @@ def fmt_p(p):
 
 
 # ---------- Fig. S2: discrimination with CIs (eos2 test set) ----------
-M = [("Logistic regression", .8605, .8475, .8737, .2680, .2421, .2990),
-     ("TabTransformer", .8679, .8549, .8808, .3052, .2768, .3384),
-     ("Grid-tuned KELM", .8750, .8626, .8870, .2926, .2660, .3225),
-     ("Tabular Mamba", .8756, .8636, .8878, .2817, .2563, .3124),
-     ("Random forest", .8821, .8703, .8938, .3389, .3093, .3720),
-     ("Stacked DL", .8832, .8716, .8949, .3122, .2840, .3453),
-     ("CM-KELM", .8866, .8746, .8977, .3403, .3112, .3740),
-     ("JIT Transformer", .8899, .8788, .9006, .3366, .3072, .3690),
-     ("LightGBM", .8930, .8811, .9042, .3879, .3559, .4237),
-     ("XGBoost", .8929, .8808, .9037, .4071, .3743, .4403)]
+M = [("Logistic regression", .8621, .8492, .8752, .2792, .2517, .3115),
+     ("Tabular Mamba", .8750, .8628, .8873, .2941, .2669, .3256),
+     ("Grid-tuned KELM", .8757, .8632, .8876, .2960, .2687, .3262),
+     ("TabTransformer", .8806, .8685, .8924, .3074, .2807, .3399),
+     ("Stacked DL", .8808, .8687, .8925, .3192, .2911, .3527),
+     ("Random forest", .8830, .8709, .8948, .3356, .3070, .3693),
+     ("CM-KELM", .8860, .8740, .8970, .3419, .3122, .3757),
+     ("JIT Transformer", .8903, .8789, .9015, .3427, .3126, .3752),
+     ("XGBoost", .8923, .8809, .9032, .4026, .3696, .4362),
+     ("LightGBM", .8943, .8825, .9050, .3920, .3589, .4269)]
 fig, axs = plt.subplots(1, 2, figsize=(PAGEW, 2.6), sharey=True)
 for k, (ax, c0, title) in enumerate(zip(axs, (1, 4), ("AUROC (95% CI)", "AUPRC (95% CI)"))):
     for i, r in enumerate(M):
@@ -49,15 +49,15 @@ fig.tight_layout()
 fig.savefig("f1_discrimination.pdf")
 
 # ---------- Fig. 2: paired differences vs grid-tuned KELM (Holm p) ----------
-D = [("Logistic regression", -.0144, -.0216, -.0073, 4.06e-4, -.0247, -.0501, .0004, 0.212),
-     ("TabTransformer", -.0070, -.0139, -.0002, 0.108, .0125, -.0114, .0374, 0.61),
-     ("Tabular Mamba", .0006, -.0063, .0075, 0.862, -.0109, -.0354, .0132, 0.61),
-     ("Random forest", .0071, .0005, .0137, 0.108, .0463, .0191, .0732, 0.0045),
-     ("Stacked DL", .0082, .0027, .0137, 0.0133, .0195, -.0031, .0433, 0.255),
-     ("CM-KELM", .0116, .0074, .0159, 8.01e-7, .0477, .0276, .0682, 0.0045),
-     ("JIT Transformer", .0149, .0091, .0207, 2.41e-6, .0440, .0188, .0692, 0.010),
-     ("LightGBM", .0180, .0114, .0246, 8.01e-7, .0953, .0682, .1224, 0.0045),
-     ("XGBoost", .0179, .0115, .0242, 3.04e-7, .1144, .0875, .1397, 0.0045)]
+D = [("Logistic regression", -.0135, -.0205, -.0066, 6.79e-4, -.0168, -.0428, .0086, 0.591),
+     ("Tabular Mamba", -.0007, -.0076, .0062, 0.842, -.0019, -.0263, .0226, 0.829),
+     ("TabTransformer", .0049, -.0008, .0106, 0.261, .0114, -.0116, .0337, 0.591),
+     ("Stacked DL", .0051, -.0007, .0109, 0.261, .0232, .0004, .0468, 0.184),
+     ("Random forest", .0073, .0006, .0140, 0.128, .0397, .0120, .0664, 0.005),
+     ("CM-KELM", .0103, .0060, .0146, 1.34e-5, .0459, .0265, .0662, 0.0045),
+     ("JIT Transformer", .0147, .0087, .0206, 1.07e-5, .0467, .0203, .0720, 0.0045),
+     ("XGBoost", .0166, .0103, .0230, 2.31e-6, .1066, .0796, .1318, 0.0045),
+     ("LightGBM", .0186, .0121, .0250, 1.53e-7, .0961, .0679, .1213, 0.0045)]
 fig, axs = plt.subplots(1, 2, figsize=(PAGEW, 2.5), sharey=True)
 for k, (ax, o, title) in enumerate(zip(axs, (1, 5), ("ΔAUROC (95% CI)", "ΔAUPRC (95% CI)"))):
     for i, r in enumerate(D):
@@ -78,8 +78,8 @@ fig.savefig("f2_forest.pdf")
 # ---------- Fig. 3: preoperative vs end of surgery (single column) ----------
 fig, axs = plt.subplots(1, 2, figsize=(COLW, 2.3))
 lab = ["Preop.\n(37 var.)", "End of\nsurgery\n(93 var.)"]
-data = {"AUROC": {"Grid-tuned KELM": (.853, .875), "CM-KELM": (.860, .887), "XGBoost": (.876, .893)},
-        "AUPRC": {"Grid-tuned KELM": (.265, .293), "CM-KELM": (.286, .340), "XGBoost": (.340, .407)}}
+data = {"AUROC": {"Grid-tuned KELM": (.871, .876), "CM-KELM": (.877, .886), "XGBoost": (.878, .892)},
+        "AUPRC": {"Grid-tuned KELM": (.308, .296), "CM-KELM": (.314, .342), "XGBoost": (.343, .403)}}
 for ax, (met, d) in zip(axs, data.items()):
     w = 0.27
     for j, (m, v) in enumerate(d.items()):
@@ -97,9 +97,9 @@ fig.savefig("f3_preop_eos.pdf")
 
 # ---------- Fig. 5: selection frequency (single column) ----------
 F = [("Age", 10, 0), ("Creatinine", 10, 0), ("Urea nitrogen", 10, 0), ("Urological surgery", 10, 0),
-     ("Arterial line", 9, 1), ("Cardiac-output monitoring", 9, 1), ("Urine output, mL/kg/h", 9, 1),
-     ("ASA class", 8, 0), ("Insulin (preop.)", 8, 0), ("Urine output, total", 8, 1),
-     ("Time with temperature <36 °C", 7, 1), ("Orthopedic surgery", 7, 0), ("Otorhinolaryngology", 7, 0)]
+     ("Anesthesia duration", 9, 0), ("ASA class", 9, 0), ("Arterial line", 9, 1), ("Urine output, mL/kg/h", 9, 1),
+     ("Emergency surgery", 7, 0), ("Platelets", 7, 0), ("Cardiothoracic surgery", 7, 0),
+     ("Internal medicine", 7, 0), ("Urine output, total", 7, 1)]
 fig, ax = plt.subplots(figsize=(COLW, 2.7))
 yy = np.arange(len(F))[::-1]
 ax.barh(yy, [f[1] for f in F], color=[HL if f[2] else "#5c6bc0" for f in F], height=0.65)

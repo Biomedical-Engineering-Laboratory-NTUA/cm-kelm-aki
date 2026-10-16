@@ -1,10 +1,10 @@
 """
-Hyperparameter tuning of the boosted-tree baselines (reviewer-proofing).
+Hyperparameter tuning of the boosted-tree baselines (sensitivity analysis).
 =======================================================================
 
 Random search over XGBoost / LightGBM hyperparameters on the TRAINING set only,
 with the same criterion as the CM-KELM fitness and the grid-tuned KELM:
-mean AUPRC over a stratified 3-fold CV (same fold seed). The best configuration
+mean AUPRC over a stratified 3-fold CV (the same folds as the CM-KELM fitness). The best configuration
 is refitted on the whole training set and evaluated once on the test set.
 Predictions are saved in the standard format, so stats_eval.py and
 calibration_dca.py work on them unchanged.

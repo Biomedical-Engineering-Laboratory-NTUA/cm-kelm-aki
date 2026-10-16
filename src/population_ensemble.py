@@ -2,11 +2,8 @@
 Population ensembles from a SINGLE evolutionary run.
 ====================================================
 
-Finding of 26 Sep 2026: averaging CM-KELM models from 3 independent search
-seeds gave AUROC 0.850 (vs 0.841 per seed), significantly better than a
-grid-tuned KELM averaged over landmark draws (0.8375) -- so the gain comes
-from the diversity the evolutionary search creates (feature subsets,
-gamma/lambda), not from landmark averaging.
+Seed ensembles showed that the diversity created by the evolutionary search,
+not landmark averaging, improves discrimination.
 
 An evolutionary run already HOLDS a diverse set of good solutions: its
 final population. This module turns that population into an ensemble at
