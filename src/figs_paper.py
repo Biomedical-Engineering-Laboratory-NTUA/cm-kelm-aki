@@ -165,10 +165,10 @@ for d, c, l, m in [(cpu, "#546e7a", "CPU (24-core EPYC 9224, FP64)", "o"), (gpu,
     x, y = zip(*d)
     a.plot(x, y, m + "-", color=c, label=l, ms=3.5)
     for xi, yi in d:
-        a.annotate(f"{yi:.1f}", (xi, yi), textcoords="offset points", xytext=(5, -9), fontsize=6.5, color=c)
+        a.annotate(f"{yi:.2f}" if c == HL else f"{yi:.1f}", (xi, yi), textcoords="offset points", xytext=(5, -9), fontsize=6.5, color=c)
 a.set_xscale("log"); a.set_yscale("log"); a.set_xlabel("population × generations", fontsize=7)
 a.set_ylabel("min per search (median)", fontsize=7); a.set_title("(a) Search time vs budget")
-a.annotate("×5.6", xy=(300, 3.05), xytext=(255, 9.5), ha="right", va="center", fontsize=7,
+a.annotate("×5.7", xy=(300, 3.05), xytext=(255, 9.5), ha="right", va="center", fontsize=7,
            arrowprops=dict(arrowstyle="->", lw=0.8))
 a.yaxis.set_major_locator(FixedLocator([2, 5, 10, 20, 50, 100])); a.yaxis.set_major_formatter(ScalarFormatter())
 a.yaxis.set_minor_formatter(NullFormatter()); a.set_ylim(2, 100)
