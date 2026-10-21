@@ -28,6 +28,23 @@ The primary model is `preds_ens/cmkelm_m1000_gpu_p20_g15__esrd_eos2__popens_isla
 (mean probability of the island ensembles of seeds 1-10); the reference is
 `preds/nystrom_kelm_grid_m1000_wide__esrd_eos2.npz` (grid-tuned KELM, 8x6 grid).
 
+## 2b. Deep-learning baselines (Table III)
+
+GPU jobs; the split CSV contains patient-level data and must stay in a private directory.
+
+```bash
+python -u run_dl_baselines.py --model all --esrd cr4_z49 --features eos2     # TabTransformer, Mamba, stacked_lr_h8
+python export_split_csv.py --esrd cr4_z49 --features eos2 --out <private_dir>/inspire_esrd_eos2_split.csv
+for s in 42 43 44 45 46; do
+  python -u run_jit_split.py --split-csv <private_dir>/inspire_esrd_eos2_split.csv --seed $s --name dl_jit_s${s}__esrd_eos2
+done
+python seed_ensemble.py --runs dl_jit_s42__esrd_eos2 dl_jit_s43__esrd_eos2 dl_jit_s44__esrd_eos2 \
+  dl_jit_s45__esrd_eos2 dl_jit_s46__esrd_eos2 --name dl_jit_ens5__esrd_eos2
+```
+
+The article's files are `preds/dl_transformer_e100_s42__esrd_eos2.npz`, `preds/dl_mamba_e100_s42__esrd_eos2.npz`,
+`preds/dl_stacked_lr_h8_e100_s42__esrd_eos2.npz` and `preds/dl_jit_ens5__esrd_eos2.npz`.
+
 ## 3. Preoperative versus end of surgery (Fig. 3, Table S4)
 
 Repeat step 2 with `FEAT=preop` (baselines with `WIDE=1`, as for the end-of-surgery model).

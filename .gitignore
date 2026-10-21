@@ -1,5 +1,14 @@
 # patient-level data and derived files must never be committed (PhysioNet DUA)
 data/
+# symbolic links to the example data in cpp/ and dl/
+data
+# C++ executables and DL outputs
+cpp/*/nystrom
+cpp/*/nystrom_mpi.o
+cpp/*/nystrom_cuda.o
+output/
+*.png
+.DS_Store
 *.csv.gz
 preds/
 preds_ens/
