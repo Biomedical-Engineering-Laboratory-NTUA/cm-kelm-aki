@@ -22,7 +22,7 @@ import re
 import sys
 
 import numpy as np
-from scipy.stats import wilcoxon
+from scipy.stats import t as t_dist, wilcoxon
 
 
 def load(prefix):
@@ -49,7 +49,8 @@ def main(a, b, seed_range=None):
         lo, hi = (int(v) for v in seed_range.split("-"))
         seeds = [s for s in seeds if lo <= s <= hi]
     print(f"A = {a}\nB = {b}\npaired seeds: {seeds} (n={len(seeds)})\n")
-    print(f"{'model':10s} {'metric':6s} {'A mean±SD':>16s} {'B mean±SD':>16s} {'B-A':>8s} {'Wilcoxon p':>11s}")
+    print(f"{'model':10s} {'metric':6s} {'A mean±SD':>16s} {'B mean±SD':>16s} {'B-A':>8s} "
+          f"{'95% CI (t)':>19s} {'Wilcoxon p':>11s}")
     for which in ("single", "topk5", "islands", "diverse5"):
         for key in ("auroc", "auprc"):
             try:
@@ -58,8 +59,11 @@ def main(a, b, seed_range=None):
             except (KeyError, TypeError):
                 continue
             p = wilcoxon(xb, xa).pvalue if len(seeds) >= 5 and np.any(xb != xa) else float("nan")
+            d = xb - xa
+            h = t_dist.ppf(0.975, len(d) - 1) * d.std(ddof=1) / np.sqrt(len(d)) if len(d) > 1 else float("nan")
             print(f"{which:10s} {key:6s} {xa.mean():.4f}±{xa.std(ddof=1):.4f} "
-                  f"{xb.mean():.4f}±{xb.std(ddof=1):.4f} {xb.mean() - xa.mean():+8.4f} {p:11.3g}")
+                  f"{xb.mean():.4f}±{xb.std(ddof=1):.4f} {d.mean():+8.4f} "
+                  f"[{d.mean() - h:+.4f}, {d.mean() + h:+.4f}] {p:11.3g}")
     if len(seeds) < 5:
         print("\n(Wilcoxon needs >= 5 paired seeds; p-values omitted)")
 

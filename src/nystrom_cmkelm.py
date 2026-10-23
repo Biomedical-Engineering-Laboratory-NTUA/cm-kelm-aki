@@ -150,8 +150,8 @@ class FullCohortCMKELM:
                 top_idx = np.argsort(fitnesses)[::-1][:top_k]
                 for idx in top_idx:
                     refined, refined_fit = memetic_local_search(
-                        pop[idx], fit_fn, step_size=0.1, max_iters=5, rng=self.rng)
-                    refined = self.belief.enforce_domain_knowledge(refined)
+                        pop[idx], fit_fn, step_size=0.1, max_iters=5, rng=self.rng,
+                        repair=self.belief.enforce_domain_knowledge)
                     if refined_fit > fitnesses[idx]:
                         pop[idx] = refined
                         fitnesses[idx] = refined_fit

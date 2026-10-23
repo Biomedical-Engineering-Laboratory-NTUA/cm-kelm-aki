@@ -2,6 +2,10 @@
 CM-EELM: Cultural-Memetic Evolutionary Extreme Learning Machine
 ==================================================================
 
+Used by the article for CulturalBeliefSpace and memetic_local_search, which the
+Nystrom CM-KELM (nystrom_cmkelm.py) imports. The ELM, DEOptimizer and CMEELM classes
+are the original random-hidden-layer prototype and are not used for any result.
+
 Core implementation, built to be validated on public data before being
 pointed at the real INSPIRE cohort.
 
@@ -236,13 +240,18 @@ class CulturalBeliefSpace:
 # ----------------------------------------------------------------------
 # Memetic local search
 # ----------------------------------------------------------------------
-def memetic_local_search(genome, fitness_fn, step_size=0.05, max_iters=5, rng=None):
-    """Lamarckian hill-climbing: small Gaussian perturbations, keep if better."""
+def memetic_local_search(genome, fitness_fn, step_size=0.05, max_iters=5, rng=None, repair=None):
+    """Lamarckian hill-climbing: small Gaussian perturbations, keep if better.
+
+    repair: optional function applied to every candidate BEFORE it is evaluated
+    (e.g. CulturalBeliefSpace.enforce_domain_knowledge), so that the stored fitness
+    always belongs to the genome that is kept."""
     rng = rng or np.random.default_rng()
-    best = genome.copy()
+    repair = repair or (lambda g: g)
+    best = repair(genome.copy())
     best_fit = fitness_fn(best)
     for _ in range(max_iters):
-        candidate = best + rng.normal(0, step_size, size=best.shape)
+        candidate = repair(best + rng.normal(0, step_size, size=best.shape))
         cand_fit = fitness_fn(candidate)
         if cand_fit > best_fit:
             best, best_fit = candidate, cand_fit

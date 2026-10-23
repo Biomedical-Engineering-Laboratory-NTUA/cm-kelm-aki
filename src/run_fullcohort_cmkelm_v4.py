@@ -52,8 +52,13 @@ def main():
     ap.add_argument("--max-baseline-creatinine", type=float, default=None)
     ap.add_argument("--esrd", default=None, choices=["cr4_z49", "cr2_z49", "cr4_z49_n18"],
                     help="exclude pre-existing kidney failure (cohort tag 'esrd')")
-    ap.add_argument("--features", default="preop", choices=["preop", "eos", "eos2"],
-                    help="eos = + end-of-surgery features (features_intraop.csv.gz)")
+    ap.add_argument("--features", default="preop", choices=["preop", "preop2", "eos", "eos2"],
+                    help="eos = + end-of-surgery features (features_intraop.csv.gz); "
+                         "preop2 = strictly preoperative set (see cohort_split.py)")
+    ap.add_argument("--miss-ind", action="store_true",
+                    help="append missing-value indicators for variables with >10%% missing values")
+    ap.add_argument("--penalty", type=float, default=0.001,
+                    help="complexity penalty per selected variable in the fitness (paper: 0.001)")
     ap.add_argument("--multimeme", default=None,
                     choices=["fuzzy", "credit", "fc", "uniform", "hc", "tabu", "sa"],
                     help="hybrid multimeme local search with per-island meme selection (hybrid_memes.py); "
@@ -72,7 +77,7 @@ def main():
         a.adaptive = "none"
     Xtr, Xte, ytr, yte, cols, tag = load_split(dummy=a.dummy,
                                                max_baseline_creatinine=a.max_baseline_creatinine,
-                                            esrd=a.esrd, features=a.features)
+                                            esrd=a.esrd, features=a.features, missing_ind=a.miss_ind)
     m = min(a.m, len(ytr) // 3) if a.dummy else a.m
     name = (f"cmkelm_m{a.m}" + (f"_k{a.rank}" if a.rank else "") + (f"_rt{a.eig_rtol:g}" if a.eig_rtol else "")
             + (f"_ad{a.adaptive}" if a.adaptive and not a.multimeme else "")
@@ -81,13 +86,16 @@ def main():
             + ("" if a.backend == "cpu" else ("_cpuxp" if a.backend == "cpu-xp" else
                                          "_gpu" if a.precision == "fp64" else "_gpumix"))
             + ("_nocult" if a.no_cultural else "") + ("_nomem" if a.no_memetic else "")
+            + ("" if a.penalty == 0.001 else f"_pen{a.penalty:g}")
             + f"_p{a.pop}_g{a.gen}_s{a.seed}" + ("" if tag == "all" else f"__{tag}"))
     print(f"\n{name}: population={a.pop}, generations={a.gen}, n_landmarks={m}, seed={a.seed}", flush=True)
-    print("(protecting feature indices 0=age, 5=preop_creatinine from exclusion)\n", flush=True)
+    protected = [cols.index("age"), cols.index("preop_creatinine")]
+    print(f"(protecting feature indices {protected} = age, preop_creatinine from exclusion)\n", flush=True)
 
     t0 = time.time()
     common = dict(population_size=a.pop, generations=a.gen, n_landmarks=m,
-                  protected_feature_indices=[0, 5], n_cells=4, migration_every=5,
+                  protected_feature_indices=protected, n_cells=4, migration_every=5,
+                  complexity_penalty=a.penalty,
                   random_state=a.seed, rank=a.rank, eig_rtol=a.eig_rtol,
                   backend=a.backend, precision=a.precision,
                   use_cultural=not a.no_cultural, use_memetic=not a.no_memetic)

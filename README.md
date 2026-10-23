@@ -72,7 +72,7 @@ All commands are run from `src/`.
 |---|---|
 | `cpp/` | C++ implementations of the Nyström-KELM fit: CBLAS/LAPACK, Eigen, CUDA, MPI + CUDA (M. Cafaro); see `cpp/README.md` |
 | `dl/` | TabTransformer, tabular Mamba and their stacked ensemble (M. Cafaro), JIT classifier (M. Caforio); see `dl/README.md` |
-| `src/run_dl_baselines.py`, `src/run_jit_split.py`, `src/stack_dl.py` | wrappers that train the networks of `dl/` on the article's split and save test predictions for `stats_eval.py` |
+| `src/run_dl_baselines.py`, `src/run_jit_split.py` | wrappers that train the networks of `dl/` on the article's split and save test predictions for `stats_eval.py` |
 | `examples/get_diabetes.py` | downloads the public example data (UCI CDC Diabetes Health Indicators) used to test `cpp/` and `dl/` without INSPIRE |
 
 ## License

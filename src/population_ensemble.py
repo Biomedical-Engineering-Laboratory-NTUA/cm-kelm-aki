@@ -82,5 +82,5 @@ def population_ensemble_predict(model, Xtr, ytr, Xte, strategy):
                            random_state=0, rank=model.rank, eig_rtol=model.eig_rtol)
         ps.append(kelm.fit(Xtr * mask, ytr).predict_proba(Xte * mask))
     info = [dict(gamma=float(m_["gamma"]), lam=float(m_["lam"]), n_features=int(m_["mask"].sum()),
-                 fitness=m_["fitness"]) for m_ in members]
+                 features=np.flatnonzero(m_["mask"]).tolist(), fitness=m_["fitness"]) for m_ in members]
     return np.mean(ps, axis=0), info

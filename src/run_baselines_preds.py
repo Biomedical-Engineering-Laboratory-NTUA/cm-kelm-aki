@@ -38,6 +38,9 @@ LAMBDAS = [0.01, 0.1, 1.0, 10.0]
 # grid of the paper (the initial 5 x 4 grid above selected its smallest gamma)
 GAMMAS_WIDE = [0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0]
 LAMBDAS_WIDE = [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+# extended grid (name suffix _xwide): three smaller gammas and one smaller lambda
+GAMMAS_XWIDE = [0.00001, 0.00003, 0.0001] + GAMMAS_WIDE
+LAMBDAS_XWIDE = [0.0001] + LAMBDAS_WIDE
 
 
 def classical_models():
@@ -90,10 +93,12 @@ def main():
     ap.add_argument("--skip-grid", action="store_true")
     ap.add_argument("--skip-classical", action="store_true")
     ap.add_argument("--wide-grid", action="store_true", help="8 gammas x 6 lambdas (name suffix _wide)")
+    ap.add_argument("--xwide-grid", action="store_true", help="11 gammas x 7 lambdas (name suffix _xwide)")
+    ap.add_argument("--miss-ind", action="store_true", help="missing-value indicators (cohort_split.py)")
     ap.add_argument("--max-baseline-creatinine", type=float, default=None)
     ap.add_argument("--esrd", default=None, choices=["cr4_z49", "cr2_z49", "cr4_z49_n18"],
                     help="exclude pre-existing kidney failure (cohort tag 'esrd')")
-    ap.add_argument("--features", default="preop", choices=["preop", "eos", "eos2"],
+    ap.add_argument("--features", default="preop", choices=["preop", "preop2", "eos", "eos2"],
                     help="eos = + end-of-surgery features (features_intraop.csv.gz)")
     ap.add_argument("--dummy", action="store_true")
     ap.add_argument("--outdir", default="preds")
@@ -101,7 +106,7 @@ def main():
 
     Xtr, Xte, ytr, yte, _, tag = load_split(dummy=a.dummy,
                                             max_baseline_creatinine=a.max_baseline_creatinine,
-                                            esrd=a.esrd, features=a.features)
+                                            esrd=a.esrd, features=a.features, missing_ind=a.miss_ind)
     suffix = "" if tag == "all" else f"__{tag}"
 
     for name, model in ([] if a.skip_classical else classical_models()):
@@ -118,14 +123,15 @@ def main():
         return
     for m in a.grid_m:
         m_eff = min(m, len(ytr) // 3)  # dummy-data guard
-        gs, ls = (GAMMAS_WIDE, LAMBDAS_WIDE) if a.wide_grid else (GAMMAS, LAMBDAS)
+        gs, ls = ((GAMMAS_XWIDE, LAMBDAS_XWIDE) if a.xwide_grid else
+                  (GAMMAS_WIDE, LAMBDAS_WIDE) if a.wide_grid else (GAMMAS, LAMBDAS))
         print(f"\nGrid Nystrom-KELM, m={m_eff} ({len(gs) * len(ls)} configs x 3 folds)", flush=True)
         t0 = time.time()
         cv, g, lam = grid_nystrom(Xtr, ytr, m_eff, gammas=gs, lambdas=ls)
         mdl = NystromKELM(gamma=g, lam=lam, n_landmarks=m_eff, random_state=RANDOM_STATE).fit(Xtr, ytr)
         p = mdl.predict_proba(Xte)
         dt = time.time() - t0
-        name = f"nystrom_kelm_grid_m{m}" + ("_wide" if a.wide_grid else "")
+        name = f"nystrom_kelm_grid_m{m}" + ("_xwide" if a.xwide_grid else "_wide" if a.wide_grid else "")
         print(f"{name}: best gamma={g}, lambda={lam} (CV-AUPRC {cv:.4f}) -> test AUROC "
               f"{roc_auc_score(yte, p):.4f}  AUPRC {average_precision_score(yte, p):.4f}  "
               f"({dt / 60:.1f} min)", flush=True)

@@ -2,6 +2,12 @@
 Kernel ELM (KELM) architecture variant
 ======================================================================
 
+Used by the article only for the genome encoding (Encoding: log-gamma, log-lambda
+and one selection gene per variable; log-gamma and log-lambda are clipped to
+[-10, 5] when decoded). The exact-KELM classes and kelm_fitness below are the
+small-sample prototypes that preceded the Nystrom version (nystrom_cmkelm.py);
+they are kept for completeness and are not used for any result.
+
 Standard ELM projects inputs through a RANDOM hidden layer (W, b), which
 is fast but can be a weak nonlinear feature map for some problems (as our
 hard-dataset stress test suggested).
@@ -223,8 +229,8 @@ class CMKELM:
                 top_idx = np.argsort(fitnesses)[::-1][:top_k]
                 for idx in top_idx:
                     refined, refined_fit = memetic_local_search(
-                        pop[idx], fit_fn, step_size=0.1, max_iters=5, rng=self.rng)
-                    refined = self.belief.enforce_domain_knowledge(refined)
+                        pop[idx], fit_fn, step_size=0.1, max_iters=5, rng=self.rng,
+                        repair=self.belief.enforce_domain_knowledge)
                     if refined_fit > fitnesses[idx]:
                         pop[idx] = refined
                         fitnesses[idx] = refined_fit

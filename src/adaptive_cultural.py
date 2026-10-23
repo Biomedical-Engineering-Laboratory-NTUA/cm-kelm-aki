@@ -261,8 +261,8 @@ class AdaptiveCulturalCMKELM:
                 top = np.argsort(fit)[::-1][:max(1, int(self.population_size * self.memetic_top_frac))]
                 for idx in top:
                     ref, ref_fit = memetic_local_search(pop[idx], fit_fn, step_size=0.1,
-                                                        max_iters=5, rng=self.rng)
-                    ref = self.belief.enforce_domain_knowledge(ref)
+                                                        max_iters=5, rng=self.rng,
+                                                        repair=self.belief.enforce_domain_knowledge)
                     if ref_fit > fit[idx]:
                         pop[idx], fit[idx] = ref, ref_fit
 
