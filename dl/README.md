@@ -30,8 +30,9 @@ AdamW (learning rate 1e-3) and batches of 256, keeping the epoch with the best v
   the same Mamba, logistic-regression meta-learner fitted on the validation predictions);
   weight decay 1e-4 and 100 epochs for all three;
 - `src/run_jit_split.py` on the CSV of `src/export_split_csv.py`: `jit/main.py` with its defaults
-  (width 32, 8 heads, 3 encoder and 2 decoder layers, 4 feedback steps, 30 epochs, weight decay
-  1e-4, plateau scheduler), seeds 42-46, averaged with `src/seed_ensemble.py`.
+  (width 32, 8 heads, 3 encoder and 2 decoder layers, 30 epochs, weight decay 1e-4, plateau
+  scheduler) except `--feedback_steps 3`, chosen on the validation set among 2-8; seeds 42-46,
+  averaged with `src/seed_ensemble.py` (see `docs/REPRODUCE.md`).
 
 The stand-alone scripts above use their own example settings (e.g. the stand-alone TabTransformer
 uses 16 heads); the article's settings are those listed here. With the same seed, the model files

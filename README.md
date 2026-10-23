@@ -3,7 +3,7 @@
 Code for the article
 
 > J. Digalakis, M. Cafaro, I. Vezakis, G. K. Matsopoulos, D. D. Koutsouris,
-> "A Parallel Evolutionary Kernel Extreme Learning Machine with Population Ensembles for
+> "A GPU-Accelerated Evolutionary Kernel Extreme Learning Machine with Population Ensembles for
 > Postoperative Acute Kidney Injury Prediction," submitted to *IEEE Journal of Biomedical and Health Informatics*.
 
 An island-model differential evolution with population ensembles jointly selects the input

@@ -45,5 +45,5 @@ not match the GPU makes the custom kernels fail to launch.
 On the example data (n = 253,680, m = 500, seed 42) the four backends gave the same first ten
 probabilities to the printed precision (7 decimals), which also match an independent NumPy
 computation. Training took about 4 s on 8 CPU cores (CBLAS/LAPACK, Eigen) and 0.27 s on one
-NVIDIA RTX 6000 Ada (CUDA, MPI + CUDA). The timings in the article (m = 5000 on the INSPIRE cohort)
-cannot be reproduced without access to INSPIRE.
+NVIDIA RTX 6000 Ada (CUDA, MPI + CUDA). The timings in the article (m = 1000 and 5000 on the
+training set of the final INSPIRE cohort) cannot be reproduced without access to INSPIRE.

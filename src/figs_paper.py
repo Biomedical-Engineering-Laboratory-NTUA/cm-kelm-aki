@@ -70,7 +70,7 @@ fig.savefig(OUT + "f2_forest.pdf")
 # ---------- Fig. 3: preoperative vs end of surgery (single column) ----------
 fig, axs = plt.subplots(1, 2, figsize=(COLW, 2.3))
 lab = ["Preop.\n(47 var.)", "End of\nsurgery\n(93 var.)"]
-data = {"AUROC": {"Grid-tuned KELM": (.851, .876), "CM-KELM": (.863, .886), "XGBoost": (.866, .892)},
+data = {"AUROC": {"Grid-tuned KELM": (.851, .876), "CM-KELM": (.863, .885), "XGBoost": (.866, .892)},
         "AUPRC": {"Grid-tuned KELM": (.266, .296), "CM-KELM": (.295, .342), "XGBoost": (.310, .403)}}
 for ax, (met, d) in zip(axs, data.items()):
     w = 0.27
