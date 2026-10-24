@@ -1,7 +1,7 @@
 import re
 NAMES = {"logistic_regression": "Logistic regression", "dl_mamba": "Tabular Mamba", "nystrom_kelm_grid": "Grid-tuned KELM",
          "dl_transformer": "TabTransformer", "dl_stacked": "Stacked DL", "random_forest": "Random forest",
-         "cmkelm": "CM-KELM", "dl_jit": "JIT Transformer", "xgboost": "XGBoost", "lightgbm": "LightGBM"}
+         "cmkelm": "CM-KELM", "dl_jit": "JIT Transformer", "dl_mlp": "MLP", "dl_ftt": "FT-Transformer", "xgboost": "XGBoost", "lightgbm": "LightGBM"}
 num = r"(-?[0-9.]+)"
 def parse(path):
     rows = {}

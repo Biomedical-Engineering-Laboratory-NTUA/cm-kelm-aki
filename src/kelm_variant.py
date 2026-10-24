@@ -107,6 +107,19 @@ class KELMEncoding:
         return gamma, lam, mask
 
 
+class ARDEncoding(KELMEncoding):
+    """Same genome as KELMEncoding, but the variable genes are decoded into continuous
+    weights w_j = exp(z_j) (z_j clipped to [-6, 3]) instead of a 0/1 mask. Multiplying the
+    standardised inputs by w gives the anisotropic RBF kernel
+    exp(-gamma * sum_j w_j^2 (x_j - x'_j)^2) (automatic relevance determination), searched by
+    the same evolutionary algorithm; very small weights switch a variable off softly.
+    Used with complexity_penalty=0 (run_fullcohort_cmkelm_v4.py --ard)."""
+
+    def decode(self, genome):
+        gamma, lam, _ = super().decode(genome)
+        return gamma, lam, np.exp(np.clip(genome[2:], -6.0, 3.0))
+
+
 def kelm_fitness(genome, X, y, encoding, complexity_penalty=0.001, n_splits=2, max_train=400):
     gamma, lam, mask = encoding.decode(genome)
     Xm = X * mask

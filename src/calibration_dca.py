@@ -120,6 +120,11 @@ def main():
     ap.add_argument("files", nargs="+")
     ap.add_argument("--out", default="calibration_dca")
     ap.add_argument("--folds", type=int, default=5)
+    ap.add_argument("--calib-dir", default=None,
+                    help="directory of calibration sets written by calib_oof.py (training out-of-fold or "
+                         "validation predictions, same file names as the test files): Platt scaling is fitted "
+                         "there and applied unchanged to the test set; test-set cross-fitting is then only "
+                         "reported as a sensitivity analysis")
     ap.add_argument("--bins", type=int, default=20, help="quantile groups in the reliability plot")
     ap.add_argument("--highlight", default="cmkelm", help="substring of the model drawn in bold")
     ap.add_argument("--calib-models", default="cmkelm,xgboost,nystrom_kelm_grid",
@@ -137,7 +142,17 @@ def main():
 
     rows, recal = [], {}
     for name, y, p in runs:
-        pc = crossfit(y, p, "platt", a.folds)
+        pc_cv = crossfit(y, p, "platt", a.folds)
+        source = "test cross-fit"
+        pc = pc_cv
+        cf = os.path.join(a.calib_dir, name + ".npz") if a.calib_dir else None
+        if cf and os.path.exists(cf):
+            _, yc, pcal = load(cf)
+            cal = LogisticRegression(C=1e6).fit(logit(pcal).reshape(-1, 1), yc)
+            pc = cal.predict_proba(logit(p).reshape(-1, 1))[:, 1]
+            source = json.loads(str(np.load(cf, allow_pickle=False)["meta"])).get("calibration_source", "external")
+        elif a.calib_dir:
+            print(f"WARNING: no calibration set for {name} in {a.calib_dir}; test cross-fitting used", flush=True)
         pi = crossfit(y, p, "isotonic", a.folds)
         recal[name] = pc
         ci, cs = cal_intercept_slope(y, p)
@@ -145,6 +160,7 @@ def main():
         r = dict(model=name, auroc=roc_auc_score(y, p), auprc=average_precision_score(y, p),
                  auprc_platt=average_precision_score(y, pc),
                  brier_raw=brier_score_loss(y, p), brier_platt=brier_score_loss(y, pc),
+                 calibration_source=source, brier_platt_testcv=brier_score_loss(y, pc_cv),
                  brier_iso=brier_score_loss(y, pi), ece_raw=ece(y, p), ece_platt=ece(y, pc),
                  cal_int_raw=ci, cal_slope_raw=cs, cal_int_platt=ci2, cal_slope_platt=cs2,
                  mean_p_raw=p.mean())
@@ -158,15 +174,18 @@ def main():
     n, npos = len(y0), int(y0.sum())
     L = [f"# Calibration and decision-curve analysis\n",
          f"Test set: n={n}, AKI={npos} ({100 * prev:.2f}%). Recalibration: Platt scaling on logit(p), "
-         f"cross-fitted over {a.folds} stratified folds of the test set (isotonic as sensitivity). "
-         f"AUROC is unchanged by the monotone recalibration.\n",
+         + (f"fitted on the calibration sets of {a.calib_dir} (column 'source') and applied unchanged to the "
+            f"test set; 'Brier Platt test-CV' = cross-fitted over {a.folds} folds of the test set (sensitivity). "
+            if a.calib_dir else
+            f"cross-fitted over {a.folds} stratified folds of the test set (isotonic as sensitivity). ")
+         + "AUROC is unchanged by the monotone recalibration.\n",
          "## 1. Calibration before and after recalibration\n",
-         "| Model | AUROC | AUPRC | mean predicted risk (raw) | Brier raw | Brier Platt | Brier isotonic | "
-         "ECE raw | ECE Platt | intercept raw | slope raw | intercept Platt | slope Platt |",
-         "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+         "| Model | source | AUROC | AUPRC | mean predicted risk (raw) | Brier raw | Brier Platt | Brier Platt test-CV | "
+         "Brier isotonic | ECE raw | ECE Platt | intercept raw | slope raw | intercept Platt | slope Platt |",
+         "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
-        L.append(f"| {r['model']} | {r['auroc']:.4f} | {r['auprc']:.4f} | {r['mean_p_raw']:.3f} | "
-                 f"{r['brier_raw']:.4f} | {r['brier_platt']:.4f} | {r['brier_iso']:.4f} | {r['ece_raw']:.4f} | "
+        L.append(f"| {r['model']} | {r['calibration_source']} | {r['auroc']:.4f} | {r['auprc']:.4f} | {r['mean_p_raw']:.3f} | "
+                 f"{r['brier_raw']:.4f} | {r['brier_platt']:.4f} | {r['brier_platt_testcv']:.4f} | {r['brier_iso']:.4f} | {r['ece_raw']:.4f} | "
                  f"{r['ece_platt']:.4f} | {r['cal_int_raw']:+.2f} | {r['cal_slope_raw']:.2f} | "
                  f"{r['cal_int_platt']:+.2f} | {r['cal_slope_platt']:.2f} |")
     L.append(f"\nReference: Brier of a constant prediction equal to the prevalence = {prev * (1 - prev):.4f}. "
@@ -249,7 +268,8 @@ def main():
     ax1.set_xlim(lo, 0.8)
     ax1.set_ylim(lo, 0.8)
     ax1.set_ylabel("observed AKI rate")
-    ax1.set_title(f"(a) Reliability after Platt recalibration ({a.bins} risk groups)")
+    ax1.set_title(f"(a) Reliability after Platt recalibration ({a.bins} risk groups)" if not a.calib_dir else
+                  f"(a) Reliability, Platt fitted outside the test set ({a.bins} groups)")
     ax1.tick_params(labelbottom=False)
     hl_name = next((n for n, _, _ in runs if a.highlight and a.highlight.lower() in n.lower()), runs[0][0])
     ph = np.clip(recal[hl_name], lo, None)
@@ -273,7 +293,7 @@ def main():
     for ax in (ax1, ax2):
         ax.grid(alpha=0.25, which="both")
     ax1.legend(loc="upper left", frameon=False)
-    ax2.legend(loc="upper right", frameon=False)
+    ax2.legend(loc="upper center", bbox_to_anchor=(0.5, -0.17), frameon=False, ncol=4, fontsize=5.8)
     fig.savefig(f"{a.out}.png", dpi=300, bbox_inches="tight")
     fig.savefig(f"{a.out}.pdf", bbox_inches="tight")
     print(f"\nwritten {a.out}.md, {a.out}.csv, {a.out}.png, {a.out}.pdf")
@@ -281,11 +301,11 @@ def main():
 
 COLORS = {"Logistic regression": "#1f77b4", "Random forest": "#ff7f0e", "XGBoost": "#2ca02c", "LightGBM": "#17becf",
           "Grid-tuned KELM": "#9467bd", "Stacked DL": "#8c564b", "TabTransformer": "#7f7f7f",
-          "Tabular Mamba": "#9e9d24", "MLP": "#e377c2", "JIT Transformer": "#3949ab"}
+          "Tabular Mamba": "#9e9d24", "MLP": "#e377c2", "JIT Transformer": "#3949ab", "FT-Transformer": "#6d4c41"}
 PALETTE = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#17becf", "#7f7f7f", "#bcbd22"]
 SHORT = [(r"^logistic_regression", "Logistic regression"), (r"^random_forest", "Random forest"), (r"^xgboost", "XGBoost"),
          (r"^lightgbm", "LightGBM"), (r"^nystrom_kelm_grid", "Grid-tuned KELM"), (r"^dl_stacked_lr", "Stacked DL"),
-         (r"^dl_jit", "JIT Transformer"),
+         (r"^dl_jit", "JIT Transformer"), (r"^dl_mlp", "MLP"), (r"^dl_ftt", "FT-Transformer"),
          (r"^dl_stacked_svcbal", "DL stacked (bal. SVC)"), (r"^dl_transformer", "TabTransformer"),
          (r"^dl_mamba", "Tabular Mamba"), (r"^mlp", "MLP"), (r"^cmkelm.*mmtabu.*islands", "CM-KELM + tabu"),
          (r"^cmkelm.*islands", "CM-KELM"), (r"^cmkelm", "CM-KELM (single)")]

@@ -69,6 +69,9 @@ def main():
     ap.add_argument("--no-cultural", action="store_true",
                     help="ablation: plain DE without belief space (no norms, exemplar pull, islands)")
     ap.add_argument("--no-memetic", action="store_true", help="ablation: no Gaussian hill-climb")
+    ap.add_argument("--ard", action="store_true",
+                    help="control: evolve continuous per-variable kernel weights (ARD) instead of a "
+                         "0/1 mask (kelm_variant.ARDEncoding); use with --penalty 0")
     ap.add_argument("--dummy", action="store_true")
     ap.add_argument("--outdir", default="preds")
     a = ap.parse_args()
@@ -86,6 +89,7 @@ def main():
             + ("" if a.backend == "cpu" else ("_cpuxp" if a.backend == "cpu-xp" else
                                          "_gpu" if a.precision == "fp64" else "_gpumix"))
             + ("_nocult" if a.no_cultural else "") + ("_nomem" if a.no_memetic else "")
+            + ("_ard" if a.ard else "")
             + ("" if a.penalty == 0.001 else f"_pen{a.penalty:g}")
             + f"_p{a.pop}_g{a.gen}_s{a.seed}" + ("" if tag == "all" else f"__{tag}"))
     print(f"\n{name}: population={a.pop}, generations={a.gen}, n_landmarks={m}, seed={a.seed}", flush=True)
@@ -99,6 +103,11 @@ def main():
                   random_state=a.seed, rank=a.rank, eig_rtol=a.eig_rtol,
                   backend=a.backend, precision=a.precision,
                   use_cultural=not a.no_cultural, use_memetic=not a.no_memetic)
+    if a.ard:
+        if a.adaptive:
+            raise SystemExit("--ard is implemented for the static CM-KELM only")
+        from kelm_variant import ARDEncoding
+        common["encoding_cls"] = ARDEncoding
     if a.adaptive:
         fl = "" if a.adaptive.lower() == "none" else a.adaptive.upper()
         model = AdaptiveCulturalCMKELM(adaptive_ks="K" in fl, adaptive_accept="A" in fl,
@@ -116,6 +125,8 @@ def main():
     p = model.predict_proba(Xte)
     auroc, auprc = roc_auc_score(yte, p), average_precision_score(yte, p)
     active = [c for c, keep in zip(cols, model.best_mask_) if keep]
+    if a.ard:   # report the variables with a weight of at least 0.1 (others are practically off)
+        active = [c for c, w in zip(cols, model.best_mask_) if w >= 0.1]
 
     print("\n" + "=" * 70, flush=True)
     print(f"RESULT {name}", flush=True)
@@ -146,6 +157,7 @@ def main():
     os.makedirs(a.outdir, exist_ok=True)
     with open(f"{a.outdir}/{name}.json", "w") as fh:
         json.dump({"auroc": auroc, "auprc": auprc, "fit_time_min": fit_time / 60,
+                   "best_fitness": float(max(model.final_fitnesses_)) if hasattr(model, "final_fitnesses_") else None,
                    "active_features": active, "population_ensembles": pop_results,
                    "backend": a.backend, "precision": a.precision,
                    "fitness_eval_seconds": getattr(getattr(model, "fitness_", None), "seconds", None),

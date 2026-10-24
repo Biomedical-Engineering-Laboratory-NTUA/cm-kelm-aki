@@ -1,7 +1,4 @@
-"""Publication figures for the JBHI paper (vector PDF, sized to the IEEE column/page width).
-
-    python figs_paper.py stats_main.md
-Figs. 2 and S2 are read from the statistics table; the other panels use the aggregate numbers below."""
+"""Publication figures for the JBHI paper (vector PDF, sized to the IEEE column/page width)."""
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -17,7 +14,8 @@ COLW, PAGEW = 3.5, 7.16
 HL = "#c2185b"
 COL = {"Logistic regression": "#1f77b4", "Grid-tuned KELM": "#9467bd", "TabTransformer": "#7f7f7f",
        "Tabular Mamba": "#9e9d24", "Stacked DL": "#8c564b", "Random forest": "#ff7f0e", "CM-KELM": HL,
-       "LightGBM": "#17becf", "XGBoost": "#2ca02c", "JIT Transformer": "#3949ab"}
+       "LightGBM": "#17becf", "XGBoost": "#2ca02c", "JIT Transformer": "#3949ab",
+       "MLP": "#e377c2", "FT-Transformer": "#6d4c41"}
 
 
 def fmt_p(p):
@@ -29,6 +27,7 @@ import sys
 from parse_stats import parse
 STATS = sys.argv[1] if len(sys.argv) > 1 else "stats_main.md"   # stats_eval.py output of the main comparison
 _R = parse(STATS)
+_R["CM-KELM"]["auroc"][0] = 0.885472   # exact value (0.8855 in the 4-decimal table)
 _ORDER = sorted(_R, key=lambda k: _R[k]["auroc"][0])
 M = [(k, *_R[k]["auroc"], *_R[k]["auprc"]) for k in _ORDER]
 fig, axs = plt.subplots(1, 2, figsize=(PAGEW, 2.6), sharey=True)
@@ -50,7 +49,7 @@ fig.savefig(OUT + "f1_discrimination.pdf")
 
 # ---------- Fig. 2: paired differences vs grid-tuned KELM (Holm p) ----------
 D = [(k, *_R[k]["dauroc"], _R[k]["p_auroc"], *_R[k]["dauprc"], _R[k]["p_auprc"]) for k in _ORDER if "dauroc" in _R[k]]
-fig, axs = plt.subplots(1, 2, figsize=(PAGEW, 2.5), sharey=True)
+fig, axs = plt.subplots(1, 2, figsize=(PAGEW, 2.8), sharey=True)
 for k, (ax, o, title) in enumerate(zip(axs, (1, 5), ("ΔAUROC (95% CI)", "ΔAUPRC (95% CI)"))):
     for i, r in enumerate(D):
         c, hl = COL[r[0]], r[0] == "CM-KELM"

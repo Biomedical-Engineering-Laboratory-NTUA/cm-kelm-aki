@@ -38,7 +38,7 @@ def _decoded(model):
 def _dedupe(members):
     seen, uniq = set(), []
     for mbr in sorted(members, key=lambda d: -d["fitness"]):
-        key = (tuple(mbr["mask"].astype(int)), round(np.log(mbr["gamma"]), 3), round(np.log(mbr["lam"]), 3))
+        key = (tuple(np.round(mbr["mask"], 3)), round(np.log(mbr["gamma"]), 3), round(np.log(mbr["lam"]), 3))
         if key not in seen:
             seen.add(key)
             uniq.append(mbr)

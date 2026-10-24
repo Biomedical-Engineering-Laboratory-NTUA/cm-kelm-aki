@@ -170,7 +170,7 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--val-frac", type=float, default=0.15)
     ap.add_argument("--esrd", default=None, choices=["cr4_z49", "cr2_z49", "cr4_z49_n18"])
-    ap.add_argument("--features", default="preop", choices=["preop", "eos", "eos2"])
+    ap.add_argument("--features", default="preop", choices=["preop", "preop2", "eos", "eos2"])
     ap.add_argument("--device", default=None, help="cuda | cpu (default: cuda if available)")
     ap.add_argument("--faithful", action="store_true",
                     help="keep the original state_dict() reference behaviour (last epoch, not best)")
@@ -180,6 +180,9 @@ def main():
                     help="stacked: load cached Mamba base predictions instead of retraining Mamba")
     ap.add_argument("--dummy", action="store_true")
     ap.add_argument("--outdir", default="preds")
+    ap.add_argument("--val-outdir", default=None,
+                    help="also save the validation predictions of every model there (calibration sets for "
+                         "calib_oof.py; the stacked meta-learners are fitted on the same validation set)")
     a = ap.parse_args()
 
     device = torch.device(a.device or ("cuda" if torch.cuda.is_available() else "cpu"))
@@ -207,8 +210,11 @@ def main():
 
     results = {}
 
-    def finish(name, p_te, hist, extra):
+    def finish(name, p_te, hist, extra, p_va=None):
         full = f"dl_{name}_e{a.epochs}_s{a.seed}" + ("_faithful" if a.faithful else "") + sfx
+        if a.val_outdir and p_va is not None:
+            save_predictions(f"{a.val_outdir}/{full}.npz", full, yva, p_va, model=name, split="validation",
+                             seed=a.seed, cohort=tag)
         au, ap_ = roc_auc_score(yte, p_te), average_precision_score(yte, p_te)
         print(f"RESULT {full}: test AUROC {au:.4f} | AUPRC {ap_:.4f}", flush=True)
         save_predictions(f"{a.outdir}/{full}.npz", full, yte, p_te, model=name, epochs=a.epochs,
@@ -230,7 +236,8 @@ def main():
         m, hist, be = train(m, fwd_tab, tab["tr"], tab["va"], yva, 20.0, a.epochs, device,
                             scheduler=True, faithful=a.faithful, tag="transformer")
         finish(tf_name, predict(m, fwd_tab, tab["te"], device), hist,
-               {"best_epoch": be, "train_minutes": (time.time() - t0) / 60})
+               {"best_epoch": be, "train_minutes": (time.time() - t0) / 60},
+               p_va=predict(m, fwd_tab, tab["va"], device))
 
     reuse = a.reuse_mamba and "mamba" not in want and os.path.exists(cache)
     if a.reuse_mamba and not reuse:
@@ -247,7 +254,7 @@ def main():
         os.makedirs("dl_cache", exist_ok=True)
         np.savez_compressed(cache, p_va=pm_va, p_te=pm_te, minutes=mamba_min, best_epoch=be)
         if "mamba" in want:
-            finish("mamba", pm_te, mamba_hist, {"best_epoch": be, "train_minutes": mamba_min})
+            finish("mamba", pm_te, mamba_hist, {"best_epoch": be, "train_minutes": mamba_min}, p_va=pm_va)
     elif reuse:
         c = np.load(cache)
         pm_va, pm_te, mamba_min = c["p_va"], c["p_te"], float(c["minutes"])
@@ -278,7 +285,7 @@ def main():
         for nm, meta in metas.items():
             meta.fit(Z_va, yva)
             finish(f"{nm}_h{a.stack_heads}", meta.predict_proba(Z_te)[:, 1], hist_t,
-                   {**extra, "stack_heads": a.stack_heads})
+                   {**extra, "stack_heads": a.stack_heads}, p_va=meta.predict_proba(Z_va)[:, 1])
 
     print("\nSummary (test set):")
     for k, (au, ap_) in results.items():

@@ -8,7 +8,7 @@ Cohort tags: `cr4_z49` (primary), `cr2_z49` and `cr4_z49_n18` (sensitivity). Fea
 `jobs_gpu.sh` defaults to `ESRD=cr4_z49`, `FEAT=eos2`. Statistics use 10,000 bootstrap replicates
 (`--n-boot 10000`).
 
-Tables and figures: main text Tables I-III and Figs. 1-6; supplement Tables S1-S9 and Figs. S1-S3.
+Tables and figures: main text Tables I-III and Figs. 1-3; supplement Tables S1-S9 and Figs. S1-S4.
 
 ## 0. End-of-surgery variables
 
@@ -56,12 +56,12 @@ python seed_ensemble.py --runs dl_jit_fb3_s42__esrd_eos2 dl_jit_fb3_s43__esrd_eo
 The article's files are `preds/dl_transformer_e100_s42__esrd_eos2.npz`, `preds/dl_mamba_e100_s42__esrd_eos2.npz`,
 `preds/dl_stacked_lr_h8_e100_s42__esrd_eos2.npz` and `preds/dl_jit_fb3_ens5__esrd_eos2.npz`.
 
-## 3. Preoperative versus end of surgery (Fig. 3, Table S5)
+## 3. Preoperative versus end of surgery (Fig. S2, Table S5)
 
 Repeat step 2 with `FEAT=preop2` (and `FEAT=preop` for the 37-variable set); baselines with `WIDE=1`,
 as for the end-of-surgery model.
 
-## 4. Calibration and decision curves (Fig. 4)
+## 4. Calibration and decision curves (Fig. 3; see 6c for calibration outside the test set)
 
 ```bash
 python calibration_dca.py preds/logistic_regression__esrd_eos2.npz preds/nystrom_kelm_grid_m1000_wide__esrd_eos2.npz \
@@ -72,14 +72,14 @@ python calibration_dca.py preds/logistic_regression__esrd_eos2.npz preds/nystrom
   --calib-models cmkelm,dl_jit,xgboost,nystrom_kelm_grid --out fig_calib_eos2
 ```
 
-## 5. Selected variables and their stability (Fig. 5, Section S7)
+## 5. Selected variables and their stability (Fig. S3, Section S7)
 
 ```bash
 python feature_selection_freq.py "preds/cmkelm_m1000_gpu_p20_g15_s*__esrd_eos2.npz" --out fsel_esrd_eos2
 python mask_stability.py --esrd cr4_z49 --features eos2 --out mask_stability   # Jaccard, Nogueira et al. (2018)
 ```
 
-## 6. Search ablations on the final cohort (Table III, Table S7, Fig. S3)
+## 6. Search ablations on the final cohort (Table III, Table S8)
 
 All variants use seeds 1-10 (`SEEDS="1 2 3 4 5 6 7 8 9 10"`); replication and confirmation seeds
 11-50 are written to `preds_rep/` with `EXTRA="--outdir preds_rep"`, so that the ten-seed ensembles
@@ -106,7 +106,41 @@ python compare_seeds.py $B cmkelm_m1000_gpu_nocult_nomem_p20_g23__esrd_eos2
 python compare_seeds.py $B cmkelm_m1000_mmtabu_gpu_p20_g15__esrd_eos2 1-10
 ```
 
-## 7. Sensitivity analyses and additional controls (Tables S1 and S8)
+## 6b. Controls of the search (Table III, Table S9)
+
+```bash
+# random search over masks and (gamma, lambda) with the budget of one CM-KELM run, island ensembling
+for s in 1 2 3 4 5 6 7 8 9 10; do python -u random_search.py --backend gpu --seed $s --esrd cr4_z49 --features eos2; done
+# ARD: the same search evolving one continuous kernel weight per variable, no penalty
+sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",EXTRA="--ard --penalty 0" ../slurm/jobs_gpu.sh
+python summarize_seeds.py
+python compare_seeds.py cmkelm_m1000_gpu_p20_g15__esrd_eos2 cmkelm_m1000_gpu_randsearch_n500__esrd_eos2
+python compare_seeds.py cmkelm_m1000_gpu_p20_g15__esrd_eos2 cmkelm_m1000_gpu_ard_pen0_p20_g15__esrd_eos2
+# the same comparisons on the CV fitness of the best individual (no test data), from the Slurm logs
+python cv_fitness_ablation.py --logs "logs/*.log" --out cv_fitness_ablation
+# variables used by the ensembles, overlap with the development extraction
+python masks_overlap.py --out masks_overlap
+```
+
+## 6c. MLP and FT-Transformer; calibration outside the test set (Table II, Fig. 3, Table S6)
+
+```bash
+pip install rtdl_revisiting_models
+python -u run_tabdl.py --model mlp --esrd cr4_z49 --features eos2      # seeds 42-46 -> dl_mlp_ens5
+python -u run_tabdl.py --model ftt --esrd cr4_z49 --features eos2      # -> dl_ftt_ens5
+python -u run_dl_baselines.py --model all --esrd cr4_z49 --features eos2 --outdir preds_rerun --val-outdir preds_val
+python -u calib_oof.py --esrd cr4_z49 --features eos2 --outdir preds_cal \
+  --dl dl_transformer_e100_s42 dl_mamba_e100_s42 dl_stacked_lr_h8_e100_s42 dl_mlp_ens5 dl_ftt_ens5
+python calibration_dca.py <test prediction files> --calib-dir preds_cal --calib-models cmkelm,dl_jit,xgboost,nystrom_kelm_grid
+```
+
+`calib_oof.py` writes calibration sets that never use the test set (training out-of-fold predictions for the
+KELM, linear and tree models; validation predictions for the deep models); `calibration_dca.py --calib-dir`
+fits Platt scaling there and applies it unchanged to the test predictions.
+
+All GPU searches of the article are listed in `docs/RUNS.md`.
+
+## 7. Sensitivity analyses and additional controls (Tables S1 and S9)
 
 ```bash
 for E in cr2_z49 cr4_z49_n18; do
@@ -126,7 +160,7 @@ python -u run_baselines_preds.py --skip-classical --grid-m 1000 --wide-grid --mi
 # then seed_ensemble.py / summarize_seeds.py and stats_eval.py --n-boot 10000 against the reference
 ```
 
-## 8. Computation (Fig. 6, Table S9)
+## 8. Computation (Fig. S4)
 
 ```bash
 python compare_gpu_cpu.py <cpu_run_name> <gpu_run_name>     # equivalence and speed-up
@@ -138,5 +172,5 @@ runs on the training set of the final cohort with m = 1000 and 5000.
 
 ## 9. Figures
 
-`figs_paper.py stats_main.md` redraws Figs. 2, 3, 5, 6 and S1-S3 from the aggregate numbers above
+`figs_paper.py stats_main.md` redraws Fig. 2 and Figs. S1-S4 from the aggregate numbers above
 (`stats_main.md` is the `stats_eval.py` output of the main comparison).

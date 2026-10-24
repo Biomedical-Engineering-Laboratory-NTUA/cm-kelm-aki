@@ -10,7 +10,7 @@ An island-model differential evolution with population ensembles jointly selects
 variables and tunes a class-weighted Nyström kernel extreme learning machine (KELM). The full
 algorithm, CM-KELM, adds a cultural belief space (normative, situational, topographic and domain
 knowledge) and a Gaussian memetic step; the component ablation (`--no-cultural`, `--no-memetic`)
-reproduces the finding that evolutionary selection and population ensembles account for the gain.
+and the controls at equal budget (`random_search.py`, `--ard`) reproduce the finding that ensembles over variable subsets, rather than the sophistication of the search, account for the gain.
 Fitness (3-fold CV AUPRC) runs on the GPU in double precision with CuPy and reproduces the CPU
 implementation to numerical precision.
 
@@ -61,6 +61,9 @@ on synthetic dummy data in a few minutes on a CPU.
 | `src/stats_eval.py`, `src/calibration_dca.py`, `src/subgroup_eval.py` | DeLong, bootstrap CIs, Holm; Platt recalibration and decision curves; subgroups |
 | `src/summarize_seeds.py`, `src/seed_ensemble.py`, `src/compare_seeds.py` | seed ensembles, paired seed comparisons (Wilcoxon) |
 | `src/table1.py`, `src/feature_selection_freq.py`, `src/collect_timings.py`, `src/compare_gpu_cpu.py`, `src/figs_paper.py` | tables, selection frequencies, timings, GPU-CPU equivalence, figures |
+| `src/random_search.py`, `src/grid_ensemble.py`, `src/cv_fitness_ablation.py` | controls: random search over masks at the CM-KELM budget, grid-tuned KELM averaged over landmark draws, ablations on the training-set objective |
+| `src/calib_oof.py`, `src/mask_stability.py`, `src/masks_overlap.py` | calibration sets outside the test set, stability and size of the selected variable sets |
+| `src/run_tabdl.py` | MLP and FT-Transformer baselines (`rtdl_revisiting_models`) |
 | `slurm/` | Slurm job scripts (`jobs_cpu.sh`, `jobs_gpu.sh`, `reproduce_main.sh`) |
 | `docs/REPRODUCE.md` | which command produces which table and figure |
 

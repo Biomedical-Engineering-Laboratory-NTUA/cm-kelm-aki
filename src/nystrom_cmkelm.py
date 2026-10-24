@@ -64,7 +64,9 @@ class FullCohortCMKELM:
                  memetic_top_frac=0.1, use_cultural=True, use_memetic=True,
                  n_landmarks=1000, complexity_penalty=0.001,
                  protected_feature_indices=None, n_cells=4, migration_every=5,
-                 random_state=0, rank=None, eig_rtol=None, backend="cpu", precision="fp64"):
+                 random_state=0, rank=None, eig_rtol=None, backend="cpu", precision="fp64",
+                 encoding_cls=KELMEncoding):
+        self.encoding_cls = encoding_cls   # KELMEncoding (0/1 mask) or kelm_variant.ARDEncoding
         self.backend, self.precision = backend, precision   # 'gpu' -> gpu_fitness.NystromFitness
         self.rank = rank            # rank-k Nystrom (see nystrom_kelm.NystromKELM)
         self.eig_rtol = eig_rtol
@@ -89,7 +91,7 @@ class FullCohortCMKELM:
 
     def fit(self, X, y):
         n_features = X.shape[1]
-        self.encoding = KELMEncoding(n_features)
+        self.encoding = self.encoding_cls(n_features)
         genome_size = self.encoding.total_size
         self.belief = CulturalBeliefSpace(
             genome_size, n_cells=self.n_cells, migration_every=self.migration_every,
