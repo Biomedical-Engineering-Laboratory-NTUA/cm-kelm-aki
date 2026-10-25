@@ -2,7 +2,7 @@
 #
 # MIT License
 
-# Copyright (c) 2026 Massimo Cafaro, Ph.D.
+# Copyright (c) 2026 Massimo Cafaro, Ph.D., University of Salento, Lecce, Italy, ORCID: 0000-0003-1118-7109
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
