@@ -301,11 +301,12 @@ def main():
 
 COLORS = {"Logistic regression": "#1f77b4", "Random forest": "#ff7f0e", "XGBoost": "#2ca02c", "LightGBM": "#17becf",
           "Grid-tuned KELM": "#9467bd", "Stacked DL": "#8c564b", "TabTransformer": "#7f7f7f",
-          "Tabular Mamba": "#9e9d24", "MLP": "#e377c2", "JIT Transformer": "#3949ab", "FT-Transformer": "#6d4c41"}
+          "Tabular Mamba": "#9e9d24", "MLP": "#e377c2", "JIT Transformer": "#3949ab", "FT-Transformer": "#6d4c41",
+          "Sparse GP (ARD)": "#00897b"}
 PALETTE = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#17becf", "#7f7f7f", "#bcbd22"]
 SHORT = [(r"^logistic_regression", "Logistic regression"), (r"^random_forest", "Random forest"), (r"^xgboost", "XGBoost"),
          (r"^lightgbm", "LightGBM"), (r"^nystrom_kelm_grid", "Grid-tuned KELM"), (r"^dl_stacked_lr", "Stacked DL"),
-         (r"^dl_jit", "JIT Transformer"), (r"^dl_mlp", "MLP"), (r"^dl_ftt", "FT-Transformer"),
+         (r"^dl_jit", "JIT Transformer"), (r"^dl_mlp", "MLP"), (r"^dl_ftt", "FT-Transformer"), (r"^gp_ard", "Sparse GP (ARD)"),
          (r"^dl_stacked_svcbal", "DL stacked (bal. SVC)"), (r"^dl_transformer", "TabTransformer"),
          (r"^dl_mamba", "Tabular Mamba"), (r"^mlp", "MLP"), (r"^cmkelm.*mmtabu.*islands", "CM-KELM + tabu"),
          (r"^cmkelm.*islands", "CM-KELM"), (r"^cmkelm", "CM-KELM (single)")]

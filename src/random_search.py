@@ -14,6 +14,11 @@ compare_seeds.py and summarize_seeds.py treat the runs like any other configurat
 
     python -u random_search.py --backend gpu --seed 1 --esrd cr4_z49 --features eos2
     -> preds/cmkelm_m1000_gpu_randsearch_n500_s1__esrd_eos2{.npz,.json,__popens_islands.npz,...}
+
+With --ard the variable genes are decoded into continuous kernel weights w_j = exp(z_j)
+(kelm_variant.ARDEncoding, as in the ARD control of run_fullcohort_cmkelm_v4.py) and the
+penalty is 0; the name gets "_ard" (cmkelm_m1000_gpu_randsearch_ard_n500_s1__esrd_eos2).
+This separates the effect of the continuous weights from that of the evolutionary search.
 """
 import argparse
 import json
@@ -25,7 +30,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 
 from cmeelm import CulturalBeliefSpace
 from cohort_split import load_split
-from kelm_variant import KELMEncoding
+from kelm_variant import ARDEncoding, KELMEncoding
 from nystrom_cmkelm import nystrom_kelm_fitness
 from nystrom_kelm import NystromKELM
 from stats_eval import save_predictions
@@ -50,16 +55,20 @@ def main():
     ap.add_argument("--esrd", default=None, choices=["cr4_z49", "cr2_z49", "cr4_z49_n18"])
     ap.add_argument("--features", default="eos2", choices=["preop", "preop2", "eos", "eos2"])
     ap.add_argument("--penalty", type=float, default=0.001)
+    ap.add_argument("--ard", action="store_true", help="continuous per-variable weights (ARD), penalty 0")
     ap.add_argument("--dummy", action="store_true")
     ap.add_argument("--outdir", default="preds")
     a = ap.parse_args()
+    if a.ard:
+        a.penalty = 0.0
 
     Xtr, Xte, ytr, yte, cols, tag = load_split(dummy=a.dummy, esrd=a.esrd, features=a.features)
     m = min(a.m, len(ytr) // 3) if a.dummy else a.m
-    name = (f"cmkelm_m{a.m}" + ("_gpu" if a.backend == "gpu" else "") + f"_randsearch_n{a.n}"
-            + ("" if a.penalty == 0.001 else f"_pen{a.penalty:g}") + f"_s{a.seed}"
+    name = (f"cmkelm_m{a.m}" + ("_gpu" if a.backend == "gpu" else "") + f"_randsearch{'_ard' if a.ard else ''}_n{a.n}"
+            + ("" if a.penalty == 0.001 or a.ard else f"_pen{a.penalty:g}") + f"_s{a.seed}"
             + ("" if tag == "all" else f"__{tag}"))
-    enc = KELMEncoding(len(cols))
+    enc = (ARDEncoding if a.ard else KELMEncoding)(len(cols))
+    on = (lambda w: w >= 0.1) if a.ard else (lambda w: w > 0)   # ARD: weight >= 0.1 counts as selected
     protected = [cols.index("age"), cols.index("preop_creatinine")]
     belief = CulturalBeliefSpace(enc.total_size, protected_feature_indices=protected, mask_gene_offset=2)
     if a.backend == "gpu":
@@ -82,11 +91,11 @@ def main():
     groups = np.array_split(np.arange(a.n), a.groups)
     champs = [dec[g[np.argmax(fit[g])]] for g in groups]
     print(f"{name}: {a.n} evaluations in {search_min:.1f} min, best fitness {best['fitness']:.4f}, "
-          f"{int(best['mask'].sum())} variables", flush=True)
+          f"{int(on(best['mask']).sum())} variables", flush=True)
 
     p = fit_predict([best], Xtr, ytr, Xte, m)
     res = {"auroc": roc_auc_score(yte, p), "auprc": average_precision_score(yte, p)}
-    active = [c for c, k in zip(cols, best["mask"]) if k]
+    active = [c for c, k in zip(cols, best["mask"]) if on(k)]
     save_predictions(f"{a.outdir}/{name}.npz", name, yte, p, n_landmarks=a.m, seed=a.seed, n_evals=a.n,
                      gamma=best["gamma"], lam=best["lam"], active_features=active, cohort=tag, split_seed=42)
     pop_results = {}
@@ -94,8 +103,9 @@ def main():
         p_e = fit_predict(members, Xtr, ytr, Xte, m)
         pop_results[tag_e] = {"auroc": roc_auc_score(yte, p_e), "auprc": average_precision_score(yte, p_e),
                               "n_members": len(members)}
-        info = [dict(gamma=mb["gamma"], lam=mb["lam"], n_features=int(mb["mask"].sum()),
-                     features=np.flatnonzero(mb["mask"]).tolist(), fitness=mb["fitness"]) for mb in members]
+        info = [dict(gamma=mb["gamma"], lam=mb["lam"], n_features=int(on(mb["mask"]).sum()),
+                     features=np.flatnonzero(on(mb["mask"])).tolist(), fitness=mb["fitness"],
+                     **({"weights": np.round(mb["mask"], 4).tolist()} if a.ard else {})) for mb in members]
         save_predictions(f"{a.outdir}/{name}__popens_{tag_e}.npz", f"{name}__popens_{tag_e}", yte, p_e,
                          strategy=tag_e, members=info, n_landmarks=a.m, seed=a.seed, cohort=tag, split_seed=42)
     print(f"RESULT {name}: single {res['auroc']:.4f}/{res['auprc']:.4f} | "
