@@ -1,18 +1,28 @@
-# CM-KELM: evolutionary kernel extreme learning machine for postoperative AKI
+# DE-KELM: evolutionary ensembles of Nyström kernel ELMs for postoperative AKI
 
 Code for the article
 
-> J. Digalakis, M. Cafaro, I. Vezakis, G. K. Matsopoulos, D. D. Koutsouris,
-> "A GPU-Accelerated Evolutionary Kernel Extreme Learning Machine with Population Ensembles for
-> Postoperative Acute Kidney Injury Prediction," submitted to *IEEE Journal of Biomedical and Health Informatics*.
+> J. Digalakis, M. Cafaro, T. Chatzistamatiou, I. Vezakis, G. K. Matsopoulos, D. D. Koutsouris,
+> "Evolutionary Ensembles of Nyström Kernel Extreme Learning Machines for Postoperative Acute
+> Kidney Injury Prediction: An Equal-Budget Study of Search Complexity," submitted to
+> *IEEE Journal of Biomedical and Health Informatics*.
 
-An island-model differential evolution with population ensembles jointly selects the input
-variables and tunes a class-weighted Nyström kernel extreme learning machine (KELM). The full
-algorithm, CM-KELM, adds a cultural belief space (normative, situational, topographic and domain
-knowledge) and a Gaussian memetic step; the component ablation (`--no-cultural`, `--no-memetic`)
-and the controls at equal budget (`random_search.py`, `--ard`) reproduce the finding that ensembles over variable subsets, rather than the sophistication of the search, account for the gain.
+Differential evolution with population ensembles (DE-KELM) jointly selects the input variables and
+tunes a class-weighted Nyström kernel extreme learning machine (KELM). A variant specified first,
+CM-KELM, adds an island model, a cultural belief space (normative, situational, topographic and
+domain knowledge) and a Gaussian memetic step; its component ablation (`--no-cultural`,
+`--no-memetic`) shows that plain DE suffices. The controls at equal budget reproduce the main
+findings: with a binary variable mask, ensembles of random variable subsets do as well as evolved
+ones (`random_search.py`); with continuous per-variable kernel weights (`--ard`), random sampling
+fails (`random_search.py --ard`) and the evolutionary search matches automatic relevance
+determination learned by marginal likelihood in a sparse Gaussian process (`run_gp_ard.py`).
 Fitness (3-fold CV AUPRC) runs on the GPU in double precision with CuPy and reproduces the CPU
 implementation to numerical precision.
+
+The confirmatory analyses (repeated outer cross-validation, KDIGO stage >= 2, subgroups,
+interpretability, clinical thresholds) follow the pre-specified protocol in
+[`docs/PROTOCOL_confirmatory.md`](docs/PROTOCOL_confirmatory.md), committed before they were run;
+`src/protocol_counts.py` gives the aggregate counts computed before the commit.
 
 ## Data
 
