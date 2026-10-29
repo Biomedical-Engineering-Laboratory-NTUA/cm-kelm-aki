@@ -70,6 +70,7 @@ def main():
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--patience", type=int, default=10)
     ap.add_argument("--lr", type=float, default=0.01)
+    ap.add_argument("--save-model", default=None, help="directory for the fitted models")
     ap.add_argument("--batch", type=int, default=1024)
     ap.add_argument("--esrd", default=None, choices=["cr4_z49", "cr2_z49", "cr4_z49_n18"])
     ap.add_argument("--features", default="eos2", choices=["preop", "preop2", "eos", "eos2"])
@@ -127,6 +128,9 @@ def main():
             if wait >= a.patience:
                 break
         model.load_state_dict(best_state[0]); lik.load_state_dict(best_state[1])
+        if a.save_model:
+            os.makedirs(a.save_model, exist_ok=True)
+            torch.save({"model": best_state[0], "lik": best_state[1]}, f"{a.save_model}/gp_ard_s{seed}{sfx}.pt")
         p_te, p_va = predict(model, lik, Xte, device), predict(model, lik, Xva, device)
         ls = model.covar_module.base_kernel.lengthscale.detach().cpu().numpy().ravel()
         relevance[seed] = (1.0 / ls).tolist()

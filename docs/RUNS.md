@@ -43,3 +43,20 @@ Names follow `run_fullcohort_cmkelm_v4.py` (`_nocult`, `_nomem`: component ablat
 | `cmkelm_m1000_gpu_ard_pen0_p20_g15__esrd_eos2` | 10 | 3.63 (job time / runs) | 36.3 |
 
 Total: 412 searches, 21.5 GPU hours.
+
+## Confirmatory cross-validation (October 2026)
+
+All runs use the 5 × 2 outer folds of `src/outer_cv.py` (93 end-of-surgery variables,
+pre-existing kidney failure excluded).
+
+| Wave | Content | Runs |
+|---|---|---|
+| 1 | M1 and M2 searches (10 seeds × 10 folds each), M4/M6/M8/LightGBM | 210 |
+| 2 | M3 (5 seeds), random search ARD and masks (10 seeds, repeat 1), GP (M5), FT-Transformer (M7) | 170 |
+| 3 | Stage ≥ 2 and stage 3: M1, M2 searches, baselines, GP | 440 |
+| 4 | Baseline windows 90 and 7 days: M1, M2 searches, baselines | 420 |
+| Rerun | M1 primary searches, storing the ARD weights (identical predictions) | 100 |
+| Interpretability | Permutation importance (10 folds), SHAP (fold 11), GP refit (fold 11) | 11 |
+
+The searches ran on two NVIDIA RTX 6000 Ada GPUs in double precision. Each M1/M2 search
+of 480 evaluations took about 3–4 min.

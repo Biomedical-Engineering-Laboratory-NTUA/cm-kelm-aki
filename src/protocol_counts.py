@@ -10,7 +10,7 @@ Same cohort as the manuscript (rule cr4_z49). Prints only aggregate numbers:
   3. counts per stratum: stage (0, 1, >=2) x surgical group (cardiac surgery with bypass, urology, other);
   4. subgroup sizes: age >=65, children, emergency, CKD (eGFR < 60; CKD-EPI 2021 for adults,
      bedside Schwartz 0.413*height/SCr for children), with AKI prevalence in each.
-    python protocol_counts.py            # on the server, from ~/cmeelm-project
+    python protocol_counts.py            # on the server, from the run directory
     python protocol_counts.py --dummy    # self-test on synthetic tables
 """
 import contextlib

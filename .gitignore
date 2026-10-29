@@ -25,3 +25,18 @@ __pycache__/
 build/
 *.o
 *.so
+
+# confirmatory cross-validation: patient-level caches, predictions and fitted models (never committed)
+cv_cache/
+cv_done/
+preds_cv/
+preds_cv_val/
+preds_cv_m1bak/
+preds_gpshap/
+preds_gpshap_val/
+gp_models/
+interp_cv/
+tasks_*.txt
+# aggregate results of the confirmatory analysis are kept
+!results/confirmatory/*.csv
+!results/confirmatory/*.png

@@ -93,3 +93,27 @@ All commands are run from `src/`.
 MIT (see `LICENSE`). The files in `cpp/` and `dl/` keep their authors' MIT headers, and `dl/jit/`
 carries its own MIT license (M. Caforio). If you use the code, please cite the article and the software release
 (`CITATION.cff`).
+
+## Confirmatory cross-validation (pre-registered)
+
+The registered protocol is in `docs/PROTOCOL_confirmatory.md` and its execution notes are
+in `docs/PROTOCOL_deviations.md`. Run all commands from `src/`, with `INSPIRE_DIR`
+pointing to the INSPIRE 1.4.2 files.
+
+```bash
+python outer_cv.py --prepare --balance           # cohort cache, KDIGO stages, fold balance
+python cv_tasks.py --help                         # task lists of waves 1-4 (searches and baselines)
+sbatch --array=1-<n>%1 --gres=gpu:1 ../slurm/cv_array.sh <task file>  # one task per line
+python cv_eval.py --outcome aki --n-boot 2000 --out cv_primary         # H1, H2, secondary
+python cv_eval.py --outcome st2 --out cv_st2; python cv_eval.py --outcome st3 --out cv_st3
+python cv_eval.py --outcome aki --baseline-days 90 --out cv_b90        # also 7
+python cv_secondary.py --outcome aki --out cv_sec_aki                  # calibration, utility, subgroups
+sbatch --array=0-9%4 ../slurm/interp_array.sh                          # permutation importance, SHAP
+python run_gp_ard.py --esrd cr4_z49 --features eos2 --save-model gp_models   # with CMKELM_CV=1-1
+python gp_shap.py --models gp_models --fold 11
+python cv_interp.py --aggregate --out cv_interp_aki
+python fig_cv_paper.py --out fig_cv_calib_dca
+```
+
+Only aggregate results leave the server. The cohort cache (`cv_cache/`), the predictions
+(`preds_cv*/`) and the fitted models are patient-level and are never committed.

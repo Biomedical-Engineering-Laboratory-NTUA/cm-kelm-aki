@@ -53,8 +53,10 @@ def _load_tables(data_dir, dummy):
             pd.read_csv(f"{data_dir}/diagnosis.csv.gz"))
 
 
-def load_split(data_dir=DATA_DIR, dummy=False, max_baseline_creatinine=None, verbose=True,
-               esrd=None, features="preop", intraop_path=None, return_ids=False, missing_ind=False):
+def cohort_matrix(data_dir=DATA_DIR, dummy=False, max_baseline_creatinine=None, verbose=True,
+                  esrd=None, features="preop", intraop_path=None):
+    """Cohort, raw feature matrix (missing values as NaN, before imputation and scaling) and
+    KDIGO stage >= 1 label. Returns X, y, variable names, the cohort operations and the labs."""
     operations, labs, diagnosis = _load_tables(data_dir, dummy)
     ops_final, labs = apply_cohort_criteria(
         operations, labs, first_procedure_only=True,
@@ -98,12 +100,43 @@ def load_split(data_dir=DATA_DIR, dummy=False, max_baseline_creatinine=None, ver
 
     X = X_df.values.astype(float)
     X[np.isinf(X)] = np.nan
+    return X, y, list(X_df.columns), ops_final, labs
+
+
+def cohort_tag_of(esrd, features, max_baseline_creatinine=None, missing_ind=False):
+    tag = "all" if max_baseline_creatinine is None else f"crmax{max_baseline_creatinine:g}"
+    if esrd is not None:
+        tag = "esrd" if esrd == "cr4_z49" else f"esrd-{esrd}"
+        if max_baseline_creatinine is not None:
+            tag += f"-crmax{max_baseline_creatinine:g}"
+    if features in ("eos", "eos2", "preop2"):
+        tag += f"_{features}"
+    if missing_ind:
+        tag += "_mi"
+    return tag
+
+
+def load_split(data_dir=DATA_DIR, dummy=False, max_baseline_creatinine=None, verbose=True,
+               esrd=None, features="preop", intraop_path=None, return_ids=False, missing_ind=False):
+    """Fixed 70/30 split of the manuscript. With the environment variable CMKELM_CV="r-k"
+    (repeat r, fold k) the outer cross-validation of the confirmatory protocol is used instead
+    (outer_cv.load_fold); CMKELM_OUTCOME selects the outcome there (aki, st2, st3)."""
+    if os.environ.get("CMKELM_CV"):
+        if max_baseline_creatinine is not None or missing_ind:
+            raise ValueError("the outer cross-validation supports neither max_baseline_creatinine nor missing_ind")
+        from outer_cv import load_fold
+        r, k = (int(v) for v in os.environ["CMKELM_CV"].split("-"))
+        return load_fold(r, k, outcome=os.environ.get("CMKELM_OUTCOME", "aki"), data_dir=data_dir,
+                         dummy=dummy, esrd=esrd, features=features, intraop_path=intraop_path,
+                         verbose=verbose, return_ids=return_ids)
+    X, y, names, ops_final, labs = cohort_matrix(data_dir, dummy, max_baseline_creatinine, verbose,
+                                                 esrd, features, intraop_path)
 
     ids = ops_final["op_id"].values
     Xtr, Xte, ytr, yte, id_tr, id_te = train_test_split(
         X, y, ids, test_size=0.30, random_state=SPLIT_SEED, stratify=y)
 
-    names = list(X_df.columns)
+    names = list(names)
     if missing_ind:
         frac = np.isnan(Xtr).mean(axis=0)
         cols_mi = np.flatnonzero(frac > 0.10)
@@ -119,15 +152,7 @@ def load_split(data_dir=DATA_DIR, dummy=False, max_baseline_creatinine=None, ver
     scaler = StandardScaler().fit(Xtr)
     Xtr_s, Xte_s = scaler.transform(Xtr), scaler.transform(Xte)
 
-    cohort_tag = "all" if max_baseline_creatinine is None else f"crmax{max_baseline_creatinine:g}"
-    if esrd is not None:
-        cohort_tag = "esrd" if esrd == "cr4_z49" else f"esrd-{esrd}"
-        if max_baseline_creatinine is not None:
-            cohort_tag += f"-crmax{max_baseline_creatinine:g}"
-    if features in ("eos", "eos2", "preop2"):
-        cohort_tag += f"_{features}"
-    if missing_ind:
-        cohort_tag += "_mi"
+    cohort_tag = cohort_tag_of(esrd, features, max_baseline_creatinine, missing_ind)
     if verbose:
         print(f"Train {Xtr_s.shape}, pos {ytr.mean():.4f} | Test {Xte_s.shape}, "
               f"pos {yte.mean():.4f} | cohort={cohort_tag}", flush=True)
