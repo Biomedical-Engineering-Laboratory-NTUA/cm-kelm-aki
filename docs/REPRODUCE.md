@@ -1,176 +1,125 @@
 # Reproducing the results
 
-All commands run from `src/` with `INSPIRE_DIR` set. Heavy steps should be submitted through Slurm
-(`../slurm/`); CPU runs take minutes, a CM-KELM search about 3 min on one GPU.
-Cohort tags: `cr4_z49` (primary), `cr2_z49` and `cr4_z49_n18` (sensitivity). Feature sets:
-`preop2` (47 preoperative variables), `eos2` (93 end-of-surgery variables) and `preop` (an earlier
-37-variable set with anesthesia duration and without medications, reported in Table S5).
-`jobs_gpu.sh` defaults to `ESRD=cr4_z49`, `FEAT=eos2`. Statistics use 10,000 bootstrap replicates
-(`--n-boot 10000`).
+All commands run from `src/` with `INSPIRE_DIR` pointing to the INSPIRE 1.4.2 files
+(PhysioNet, credentialed access). Heavy steps are submitted through Slurm (`../slurm/`).
+Patient-level files (`cv_cache/`, `preds*/`, `gp_models/`, `interp_cv/`) stay on the analysis
+server and are never committed; only the aggregate outputs below are in `results/`.
 
-Tables and figures: main text Tables I-III and Figs. 1-3; supplement Tables S1-S9 and Figs. S1-S4.
+Cohort rules: `cr4_z49` (main), `cr2_z49` and `cr4_z49_n18` (stricter exclusions of
+pre-existing kidney failure). Feature sets: `eos2` (93 end-of-surgery variables, main) and
+`preop2` (47 preoperative variables).
 
-## 0. End-of-surgery variables
+## Map of the article
 
-```bash
-python intraop_features.py --data-dir $INSPIRE_DIR --out features_intraop   # -> features_intraop.csv.gz
-```
+| Item | Content | Produced by |
+|---|---|---|
+| Table I, Table S1, Fig. S1 | cohort, attrition | `table1.py` (attrition printed by the loader) |
+| Table S2 | the 93 variables | `intraop_features.py`, `cohort_split.py` |
+| Table II | confirmatory discrimination, H1/H2, M1 vs M2–M8, search controls | `cv_eval.py --outcome aki` → `cv_primary.md` |
+| Table S3 | stage ≥2, stage 3, baseline windows, stricter exclusions, preoperative variables | `cv_eval.py` (`--outcome`, `--baseline-days`, `--cohort`), `cv_secondary.py --parts subgroups` (CKD) |
+| Fig. 1, Table S4 | calibration, utility, decision curves | `cv_oof.py` → `cv_secondary.py --platt oof` → `fig_cv_paper.py` |
+| Table S5 | subgroups | `cv_secondary.py --parts subgroups` |
+| Fig. S2 | paired differences | `fig_forest.py cv_primary.csv` |
+| Fig. 2, Table S6 | interpretability | `cv_interp.py`, `gp_shap.py`, `cv_interp.py --aggregate`, `fig_interp.py` |
+| Table S7, Table S8, Fig. S3, Section S5 | development phase (single split), search loop | sections D1–D5 below; Fig. S3 is TikZ in the LaTeX source |
+| Table II (last rows), Table S9 | exploratory 2 × 2 ablation of M1 (search × encoding) | wave 7 → `cv_eval.py --out cv_primary_w7` → `cv_ablation.py` |
 
-## 1. Cohort (Fig. S1, Table I, Table S2)
-
-```bash
-python table1.py --esrd cr4_z49 --features eos2 --out table1_esrd_eos2   # attrition is printed by the loader
-```
-
-## 2. Main comparison (Table II, Figs. 2 and S2)
-
-```bash
-bash ../slurm/reproduce_main.sh       # baselines with the 8x6 KELM grid, feature-selection controls,
-                                      # tuned trees, 10 CM-KELM seeds, seed ensembles, statistics
-```
-
-The primary model is `preds_ens/cmkelm_m1000_gpu_p20_g15__esrd_eos2__popens_islands_ens.npz`
-(mean probability of the island ensembles of seeds 1-10); the reference is
-`preds/nystrom_kelm_grid_m1000_wide__esrd_eos2.npz` (grid-tuned KELM, 8x6 grid).
-
-## 2b. Deep-learning baselines (Table II)
-
-GPU jobs; the split CSV contains patient-level data and must stay in a private directory.
+## Confirmatory phase
 
 ```bash
-python -u run_dl_baselines.py --model all --esrd cr4_z49 --features eos2     # TabTransformer, Mamba, stacked_lr_h8
-python export_split_csv.py --esrd cr4_z49 --features eos2 --out <private_dir>/inspire_esrd_eos2_split.csv
-# feedback steps K = 2..8 with seed 42; K = 3 has the best validation AUROC
-for K in 2 3 4 5 6 7 8; do
-  python run_jit_split.py --split-csv <private_dir>/inspire_esrd_eos2_split.csv --seed 42 \
-    --name dl_jit_fb${K}_s42__esrd_eos2 -- --feedback_steps $K
+python outer_cv.py --prepare --balance                    # cache and fold balance (main cohort)
+python outer_cv.py --prepare --esrd cr2_z49               # sensitivity cohorts
+python outer_cv.py --prepare --esrd cr4_z49_n18
+python outer_cv.py --prepare --features preop2
+for w in 1 2 3 4 5 6 7; do
+  python cv_tasks.py --wave $w --part search > tasks_w${w}s.txt     # one command per line
+  python cv_tasks.py --wave $w --part other  > tasks_w${w}o.txt
 done
-for s in 43 44 45 46; do
-  python run_jit_split.py --split-csv <private_dir>/inspire_esrd_eos2_split.csv --seed $s \
-    --name dl_jit_fb3_s${s}__esrd_eos2 -- --feedback_steps 3
-done
-python seed_ensemble.py --runs dl_jit_fb3_s42__esrd_eos2 dl_jit_fb3_s43__esrd_eos2 dl_jit_fb3_s44__esrd_eos2 \
-  dl_jit_fb3_s45__esrd_eos2 dl_jit_fb3_s46__esrd_eos2 --name dl_jit_fb3_ens5__esrd_eos2
+sbatch --array=1-<n>%1 --gres=gpu:1 ../slurm/cv_array.sh tasks_w1s.txt     # likewise every file
 ```
 
-The article's files are `preds/dl_transformer_e100_s42__esrd_eos2.npz`, `preds/dl_mamba_e100_s42__esrd_eos2.npz`,
-`preds/dl_stacked_lr_h8_e100_s42__esrd_eos2.npz` and `preds/dl_jit_fb3_ens5__esrd_eos2.npz`.
-
-## 3. Preoperative versus end of surgery (Fig. S2, Table S5)
-
-Repeat step 2 with `FEAT=preop2` (and `FEAT=preop` for the 37-variable set); baselines with `WIDE=1`,
-as for the end-of-surgery model.
-
-## 4. Calibration and decision curves (Fig. 3; see 6c for calibration outside the test set)
+Waves: 1, M1/M2 searches and the baselines; 2, M3, GP, FT-Transformer and the random-search
+controls; 3, stage ≥2 and stage 3; 4, baseline windows of 90 and 7 days; 5, stricter exclusions;
+6, the 47 preoperative variables; 7, the cultural-memetic search with ARD weights (exploratory
+ablation). `docs/RUNS.md` lists the runs.
 
 ```bash
-python calibration_dca.py preds/logistic_regression__esrd_eos2.npz preds/nystrom_kelm_grid_m1000_wide__esrd_eos2.npz \
-  preds/random_forest__esrd_eos2.npz preds/lightgbm__esrd_eos2.npz preds/xgboost__esrd_eos2.npz \
-  preds/dl_transformer_e100_s42__esrd_eos2.npz preds/dl_mamba_e100_s42__esrd_eos2.npz \
-  preds/dl_stacked_lr_h8_e100_s42__esrd_eos2.npz preds/dl_jit_fb3_ens5__esrd_eos2.npz \
-  preds_ens/cmkelm_m1000_gpu_p20_g15__esrd_eos2__popens_islands_ens.npz \
-  --calib-models cmkelm,dl_jit,xgboost,nystrom_kelm_grid --out fig_calib_eos2
+python cv_eval.py --outcome aki --out cv_primary                       # 10,000 bootstrap replicates
+python cv_eval.py --outcome st2 --out cv_st2;  python cv_eval.py --outcome st3 --out cv_st3
+python cv_eval.py --baseline-days 90 --out cv_b90; python cv_eval.py --baseline-days 7 --out cv_b7
+python cv_eval.py --cohort esrd-cr2_z49_eos2 --out cv_cr2
+python cv_eval.py --cohort esrd-cr4_z49_n18_eos2 --out cv_n18
+python cv_eval.py --cohort esrd_preop2 --out cv_preop2
+python cv_eval.py --outcome aki --out cv_primary_w7 && python cv_ablation.py cv_primary_w7.csv cv_ablation
+sbatch --array=0-9%2 ../slurm/oof_array.sh                            # calibration sets (cv_oof.py)
+python cv_secondary.py --outcome aki --platt oof --out cv_sec_aki      # Platt and thresholds outside the held-out fold
+python cv_secondary.py --outcome aki --platt testcv --parts calibration,thresholds --out cv_sec_aki_testcv
+python cv_secondary.py --baseline-days 90 --platt testcv --parts subgroups --out cv_sec_b90   # CKD; also 7
+python fig_cv_paper.py --out fig_cv_calib_dca
+python fig_forest.py cv_primary.csv f2_cv_forest
+sbatch --array=0-9%3 ../slurm/interp10_array.sh                        # permutation importance (10), SHAP fold 11
+CMKELM_CV=1-1 python run_gp_ard.py --esrd cr4_z49 --features eos2 --outdir preds_gpshap \
+  --val-outdir preds_gpshap_val --save-model gp_models               # GP refit for its SHAP values
+python gp_shap.py --models gp_models --fold 11
+python cv_interp.py --aggregate --out cv_interp_aki
+python fig_interp.py cv_interp_aki.csv f4_interp
 ```
 
-## 5. Selected variables and their stability (Fig. S3, Section S7)
+## Development phase (single 70/30 split)
+
+### D1. End-of-surgery variables and cohort
 
 ```bash
-python feature_selection_freq.py "preds/cmkelm_m1000_gpu_p20_g15_s*__esrd_eos2.npz" --out fsel_esrd_eos2
-python mask_stability.py --esrd cr4_z49 --features eos2 --out mask_stability   # Jaccard, Nogueira et al. (2018)
+python intraop_features.py --data-dir $INSPIRE_DIR --out features_intraop
+python table1.py --esrd cr4_z49 --features eos2 --out table1_esrd_eos2
 ```
 
-## 6. Search ablations on the final cohort (Table III, Table S8)
-
-All variants use seeds 1-10 (`SEEDS="1 2 3 4 5 6 7 8 9 10"`); replication and confirmation seeds
-11-50 are written to `preds_rep/` with `EXTRA="--outdir preds_rep"`, so that the ten-seed ensembles
-stay seeds 1-10.
+### D2. Discrimination (Table S7)
 
 ```bash
-# component ablation (equal number of fitness evaluations)
-# full CM-KELM: 20 + 15 x (20 + 12) = 500 evaluations; without local search 20 + 23 x 20 = 480
+bash ../slurm/reproduce_main.sh     # baselines with the 8x6 KELM grid, controls, tuned trees, CM-KELM seeds, statistics
+python -u run_dl_baselines.py --model all --esrd cr4_z49 --features eos2     # TabTransformer, Mamba, stacked
+python -u run_tabdl.py --model mlp --esrd cr4_z49 --features eos2            # also --model ftt
+```
+
+The JIT classifier runs from an exported split (`export_split_csv.py`, kept in a private
+directory) with `run_jit_split.py` (K = 2–8 on seed 42, then K = 3 on seeds 43–46) and
+`seed_ensemble.py`. AUROC differences use DeLong's test and AUPRC differences a paired
+bootstrap with 10,000 replicates (`stats_eval.py`).
+
+### D3. Search controls and ablations (Table S8)
+
+```bash
+# full CM-KELM: 20 + 15 x (20 + 12) = 500 evaluations; plain DE 20 + 23 x 20 = 480
 sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",GEN=23,EXTRA="--no-cultural --no-memetic" ../slurm/jobs_gpu.sh
 sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",GEN=15,EXTRA="--no-cultural" ../slurm/jobs_gpu.sh
 sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",GEN=23,EXTRA="--no-memetic" ../slurm/jobs_gpu.sh
-# adaptive mechanisms (K+A+H) and noise-robust fitness (R)
 for A in KAH R; do sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",ADAPT=$A ../slurm/jobs_gpu.sh; done
-# multimeme controllers and single memes
-for C in fc fuzzy credit uniform hc tabu sa; do
-  sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",MM=$C ../slurm/jobs_gpu.sh
-done
-sbatch --export=ALL,SEEDS="$(seq -s ' ' 11 30)",MM=tabu,EXTRA="--outdir preds_rep" ../slurm/jobs_gpu.sh
-sbatch --export=ALL,SEEDS="$(seq -s ' ' 31 50)",MM=tabu,EXTRA="--outdir preds_rep" ../slurm/jobs_gpu.sh
-# (the static reference for seeds 11-50 is run the same way without MM)
-# paired comparisons with the 95% CI of the mean difference
-B=cmkelm_m1000_gpu_p20_g15__esrd_eos2
-python compare_seeds.py $B cmkelm_m1000_gpu_nocult_nomem_p20_g23__esrd_eos2
-python compare_seeds.py $B cmkelm_m1000_mmtabu_gpu_p20_g15__esrd_eos2 1-10
-```
-
-## 6b. Controls of the search (Table III, Table S9)
-
-```bash
-# random search over masks and (gamma, lambda) with the budget of one CM-KELM run, island ensembling
+for C in fc fuzzy credit uniform hc tabu sa; do sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",MM=$C ../slurm/jobs_gpu.sh; done
 for s in 1 2 3 4 5 6 7 8 9 10; do python -u random_search.py --backend gpu --seed $s --esrd cr4_z49 --features eos2; done
-# ARD: the same search evolving one continuous kernel weight per variable, no penalty
 sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",EXTRA="--ard --penalty 0" ../slurm/jobs_gpu.sh
-python summarize_seeds.py
-python compare_seeds.py cmkelm_m1000_gpu_p20_g15__esrd_eos2 cmkelm_m1000_gpu_randsearch_n500__esrd_eos2
-python compare_seeds.py cmkelm_m1000_gpu_p20_g15__esrd_eos2 cmkelm_m1000_gpu_ard_pen0_p20_g15__esrd_eos2
-# the same comparisons on the CV fitness of the best individual (no test data), from the Slurm logs
-python cv_fitness_ablation.py --logs "logs/*.log" --out cv_fitness_ablation
-# variables used by the ensembles, overlap with the development extraction
-python masks_overlap.py --out masks_overlap
+python -u run_gp_ard.py --esrd cr4_z49 --features eos2
+python compare_seeds.py cmkelm_m1000_gpu_p20_g15__esrd_eos2 <variant>__esrd_eos2   # paired Wilcoxon, 95% CI
+python cv_fitness_ablation.py --logs "logs/*.log" --out cv_fitness_ablation        # CV fitness (no test data)
 ```
 
-## 6c. MLP and FT-Transformer; calibration outside the test set (Table II, Fig. 3, Table S6)
+### D4. Sensitivity analyses (Section S5)
 
-```bash
-pip install rtdl_revisiting_models
-python -u run_tabdl.py --model mlp --esrd cr4_z49 --features eos2      # seeds 42-46 -> dl_mlp_ens5
-python -u run_tabdl.py --model ftt --esrd cr4_z49 --features eos2      # -> dl_ftt_ens5
-python -u run_dl_baselines.py --model all --esrd cr4_z49 --features eos2 --outdir preds_rerun --val-outdir preds_val
-python -u calib_oof.py --esrd cr4_z49 --features eos2 --outdir preds_cal \
-  --dl dl_transformer_e100_s42 dl_mamba_e100_s42 dl_stacked_lr_h8_e100_s42 dl_mlp_ens5 dl_ftt_ens5
-python calibration_dca.py <test prediction files> --calib-dir preds_cal --calib-models cmkelm,dl_jit,xgboost,nystrom_kelm_grid
-```
+Preoperative variables (`FEAT=preop2`), stricter exclusions (`ESRD=cr2_z49`, `cr4_z49_n18`),
+equal ensemble size (`grid_ensemble.py --k 40`), extended grid (`--xwide-grid`), complexity
+penalty (`--penalty 0 / 0.0005 / 0.002`), missing-value indicators (`--miss-ind`), calibration
+outside the test set (`calib_oof.py`, `calibration_dca.py --calib-dir`), selected variables and
+their stability (`feature_selection_freq.py`, `mask_stability.py`).
 
-`calib_oof.py` writes calibration sets that never use the test set (training out-of-fold predictions for the
-KELM, linear and tree models; validation predictions for the deep models); `calibration_dca.py --calib-dir`
-fits Platt scaling there and applies it unchanged to the test predictions.
-
-All GPU searches of the article are listed in `docs/RUNS.md`.
-
-## 7. Sensitivity analyses and additional controls (Tables S1 and S9)
-
-```bash
-for E in cr2_z49 cr4_z49_n18; do
-  sbatch --export=ALL,STAGE=baselines,ESRD=$E,FEAT=eos2,WIDE=1 ../slurm/jobs_cpu.sh
-  sbatch --export=ALL,SEEDS="1 2 3 4 5",ESRD=$E,FEAT=eos2 ../slurm/jobs_gpu.sh
-done
-# grid-tuned KELM averaged over 40 landmark draws (equal ensemble size)
-python -u grid_ensemble.py --esrd cr4_z49 --features eos2 --k 40
-# extended grid (gamma >= 1e-5, lambda >= 1e-4)
-python -u run_baselines_preds.py --skip-classical --grid-m 1000 --xwide-grid --esrd cr4_z49 --features eos2
-# complexity penalty and missing-value indicators
-for P in 0 0.0005 0.002; do
-  sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",EXTRA="--penalty $P" ../slurm/jobs_gpu.sh
-done
-sbatch --export=ALL,SEEDS="1 2 3 4 5 6 7 8 9 10",EXTRA="--miss-ind" ../slurm/jobs_gpu.sh
-python -u run_baselines_preds.py --skip-classical --grid-m 1000 --wide-grid --miss-ind --esrd cr4_z49 --features eos2
-# then seed_ensemble.py / summarize_seeds.py and stats_eval.py --n-boot 10000 against the reference
-```
-
-## 8. Computation (Fig. S4)
+### D5. Computation (Section S5)
 
 ```bash
 python compare_gpu_cpu.py <cpu_run_name> <gpu_run_name>     # equivalence and speed-up
 python collect_timings.py                                   # timings.csv
 ```
 
-The C++ backends (`../cpp/`) print their training time; the article reports the median of three
-runs on the training set of the final cohort with m = 1000 and 5000.
+The C++ backends (`../cpp/`) print their training time; the article reports the median of
+three runs on the training set of the final cohort with m = 1000 and 5000.
 
-## 9. Figures
-
-`figs_paper.py stats_main.md` redraws Fig. 2 and Figs. S1-S4 from the aggregate numbers above
-(`stats_main.md` is the `stats_eval.py` output of the main comparison).
+`figs_paper.py` draws the figures of the earlier, single-split versions of the article and is
+kept for the development phase only.

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Fig. 3 of the manuscript (confirmatory cross-validation): (a) reliability after Platt
-recalibration cross-fitted inside each test fold, pooled over the 10 test folds of both
+recalibration fitted outside each held-out fold (out-of-fold predictions of the outer training
+set; validation predictions for the GP and the FT-Transformer), as in the protocol, pooled over the 10 test folds of both
 repeats (each patient appears twice, once per repeat), 20 risk groups on a log scale;
 (b) decision curves of all models (mean net benefit of the two repeats).
 Writes only the figure (aggregate curves).
@@ -9,8 +10,10 @@ Writes only the figure (aggregate curves).
 """
 import argparse
 import numpy as np
+import os
 import matplotlib
 matplotlib.use("Agg")
+matplotlib.rcParams.update({"pdf.fonttype": 42, "ps.fonttype": 42, "font.family": "DejaVu Sans"})
 import matplotlib.pyplot as plt
 import matplotlib.ticker
 import outer_cv
@@ -53,7 +56,12 @@ def main():
                 if p is None:
                     continue
                 assert np.array_equal(y, Y[(r, kk)])
-                Q[k][(r, kk)] = cs.platt_crossfit(p, y, seed=a.seed)
+                fn = os.path.join("preds_cv_oof", f"{k}__{cs.tag_of(r, kk, 'aki', 365)}.npz")
+                if os.path.exists(fn):
+                    z = np.load(fn)
+                    Q[k][(r, kk)] = cs.platt_fit(z["p"].astype(float), z["y_true"].astype(int))(p)
+                else:
+                    print(f"no calibration set for {k} fold {r}{kk}: model left out of the figure")
     keys = [k for k in keys if len(Q[k]) == 10]
 
     fig = plt.figure(figsize=(7.16, 3.0))
@@ -83,7 +91,7 @@ def main():
     ax.plot([lo, hi], [lo, hi], "k:", lw=0.8)
     ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
     ax.set_ylabel("observed AKI rate", fontsize=7)
-    ax.set_title("(a) Reliability, Platt fitted within each test fold", fontsize=7.5)
+    ax.set_title("(a) Reliability, Platt fitted outside the held-out fold", fontsize=7.5)
     ax.legend(fontsize=6, frameon=False, loc="upper left")
     plt.setp(ax.get_xticklabels(), visible=False)
     axh.set_yscale("log"); axh.yaxis.set_major_locator(matplotlib.ticker.NullLocator()); axh.yaxis.set_minor_locator(matplotlib.ticker.NullLocator())

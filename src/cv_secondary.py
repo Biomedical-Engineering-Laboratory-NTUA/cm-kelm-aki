@@ -58,8 +58,11 @@ def model_patterns():
     return out
 
 
+COHORT = "esrd_eos2"   # set by --cohort
+
+
 def tag_of(r, k, outcome, bdays):
-    t = f"esrd_eos2_cv{r}{k}"
+    t = f"{COHORT}_cv{r}{k}"
     if outcome != "aki":
         t += f"_{outcome}"
     if bdays != 365:
@@ -149,6 +152,29 @@ def platt_crossfit(p, y, seed=0, n_splits=5):
         a, b = logistic_fit(s[tr], y[tr])
         q[te] = 1 / (1 + np.exp(-(a + b * s[te])))
     return q
+
+
+def platt_fit(p_cal, y_cal):
+    """Platt scaling fitted on a calibration set (outer-training out-of-fold or validation
+    predictions); returns a function applied unchanged to the held-out predictions."""
+    lin = p_cal.min() < 0 or p_cal.max() > 1
+    f = (lambda p: p) if lin else logit
+    a, b = logistic_fit(f(p_cal), y_cal)
+    return lambda p: 1 / (1 + np.exp(-(a + b * f(p))))
+
+
+def sens_threshold(q_cal, y_cal, target):
+    """Risk threshold that reaches the target sensitivity on the calibration set."""
+    pos = np.sort(q_cal[y_cal == 1])
+    return pos[int(np.floor((1 - target) * len(pos)))]
+
+
+def at_threshold(q, y, thr):
+    f = q >= thr
+    tp = np.sum(f & (y == 1)); fp = np.sum(f & (y == 0))
+    fn = np.sum(~f & (y == 1)); tn = np.sum(~f & (y == 0))
+    return dict(sens=tp / max(tp + fn, 1), spec=tn / max(tn + fp, 1), ppv=tp / max(tp + fp, 1),
+                flag=f.mean(), npv=tn / max(tn + fn, 1))
 
 
 def calib_metrics(q, y):
@@ -289,11 +315,18 @@ def main():
     ap.add_argument("--out", default=None)
     ap.add_argument("--parts", default="calibration,thresholds,dca,subgroups,ard")
     ap.add_argument("--seed", type=int, default=2026)
+    ap.add_argument("--cohort", default="esrd_eos2", help="cohort tag of the prediction files")
+    ap.add_argument("--platt", default="oof", choices=["oof", "testcv"],
+                    help="oof: Platt and thresholds fitted outside the held-out fold (protocol), "
+                         "testcv: cross-fitted within it (sensitivity analysis)")
+    ap.add_argument("--oof", default="preds_cv_oof", help="calibration sets of cv_oof.py")
     a = ap.parse_args()
+    global COHORT
+    COHORT = a.cohort
     out = a.out or f"cv_sec_{a.outcome}"
     parts = set(a.parts.split(","))
 
-    cache = "cv_cache/cohort_esrd_eos2" + ("" if a.baseline_days == 365 else f"_b{a.baseline_days}") + ".npz"
+    cache = f"cv_cache/cohort_{a.cohort}" + ("" if a.baseline_days == 365 else f"_b{a.baseline_days}") + ".npz"
     C = np.load(cache, allow_pickle=True)
     stage, group = C["stage"], C["group"]
     age, emop, egfr, names = C["age"], C["emop"], C["egfr"], [str(n) for n in C["names"]]
@@ -308,8 +341,13 @@ def main():
     pats = model_patterns()
     L = []  # markdown lines
     L.append(f"# Secondary analyses: outcome {a.outcome}, baseline window {a.baseline_days} days\n")
-    L.append("Outer CV 5x2 (protocol Sections 7-9). Recalibration: Platt scaling cross-fitted "
-             "inside each test fold (5 internal splits). Aggregate results only.\n")
+    L.append("Outer CV, two repeats of five folds (protocol Sections 7-9). Recalibration: "
+             + ("Platt scaling and fixed-sensitivity thresholds fitted outside the held-out fold, on "
+                "out-of-fold predictions of the outer training set (validation predictions for the GP "
+                "and the FT-Transformer), as in the protocol; Brier score with Platt cross-fitted within "
+                "the test fold as sensitivity analysis." if a.platt == "oof" else
+                "Platt scaling cross-fitted inside each test fold (5 internal splits).")
+             + " Aggregate results only.\n")
 
     # ---- collect predictions aligned with patient indices
     P = {}      # key -> {(r,k): p}
@@ -344,8 +382,29 @@ def main():
     full = [k for k in P if len(P[k]) == 10]
     m1 = next((k for k in P if k.upper().startswith("M1")), None)
 
-    # recalibrated predictions
-    Q = {k: {f: platt_crossfit(p, Y[f], seed=a.seed) for f, p in P[k].items()} for k in P}
+    # recalibrated predictions: protocol (outside the held-out fold) and test-fold cross-fitting
+    Qcv = {k: {f: platt_crossfit(p, Y[f], seed=a.seed) for f, p in P[k].items()} for k in P}
+    CAL, src = {}, {}
+    if a.platt == "oof":
+        for k in list(P):
+            CAL[k] = {}
+            for f in P[k]:
+                fn = os.path.join(a.oof, f"{k}__{tag_of(f[0], f[1], a.outcome, a.baseline_days)}.npz")
+                if os.path.exists(fn):
+                    z = np.load(fn, allow_pickle=True)
+                    CAL[k][f] = (z["y_true"].astype(int), z["p"].astype(float))
+            src[k] = "outside" if len(CAL[k]) == len(P[k]) else "test-CV"
+            if src[k] == "test-CV":
+                print(f"WARNING: no calibration set for {k} in some folds; test-fold cross-fitting used")
+        Q = {}
+        for k in P:
+            if src[k] == "outside":
+                Q[k] = {f: platt_fit(*CAL[k][f][::-1])(p) for f, p in P[k].items()}
+            else:
+                Q[k] = Qcv[k]
+        labels = {k: labels[k] + ("" if src[k] == "outside" else " (test-CV)") for k in labels}
+    else:
+        Q = Qcv
 
     rows_csv = []
 
@@ -353,8 +412,8 @@ def main():
     if "calibration" in parts:
         L.append("## Calibration (mean of folds [corrected 95% CI])\n")
         L.append("| Model | Brier raw | Brier recal. | intercept raw | slope raw | ICI raw | "
-                 "intercept recal. | slope recal. | ICI recal. |")
-        L.append("|---|---|---|---|---|---|---|---|---|")
+                 "intercept recal. | slope recal. | ICI recal. | Brier, test-CV Platt |")
+        L.append("|---|---|---|---|---|---|---|---|---|---|")
         for k in P:
             raw = [calib_metrics(np.clip(p, 0, 1), Y[f]) for f, p in P[k].items()]
             rec = [calib_metrics(Q[k][f], Y[f]) for f in P[k]]
@@ -364,7 +423,7 @@ def main():
                 return f"{np.mean([d[m] for d in lst]):.3f}"
             L.append(f"| {labels[k]} | {c(raw,'brier')} | {c(rec,'brier')} | {s(raw,'citl')} | "
                      f"{s(raw,'slope')} | {s(raw,'ici')} | {s(rec,'citl')} | {s(rec,'slope')} | "
-                     f"{s(rec,'ici')} |")
+                     f"{s(rec,'ici')} | {np.mean([calib_metrics(Qcv[k][f], Y[f])['brier'] for f in P[k]]):.4f} |")
             for f, d1, d2 in zip(P[k], raw, rec):
                 rows_csv.append(dict(part="calibration", model=k, fold=f"{f[0]}{f[1]}",
                                      **{f"raw_{x}": d1[x] for x in d1},
@@ -404,13 +463,21 @@ def main():
                     v = nb_ci(dd)
                     cells.append(f"{v[0]:+.4f} (p={v[3]:.3g})")
                 L.append(f"| {labels[k]} | " + " | ".join(cells) + " |")
-        L.append("\n## Fixed-sensitivity operating points (threshold from one half of the "
-                 "test fold, applied to the other half; mean of folds)\n")
+        L.append("\n## Fixed-sensitivity operating points (" + ("threshold chosen on the calibration set "
+                 "outside the held-out fold and applied unchanged" if a.platt == "oof" else
+                 "threshold from one half of the test fold, applied to the other half") + "; mean of folds)\n")
         L.append("| Model | target | achieved sensitivity | specificity | PPV | NPV | flagged |")
         L.append("|---|---|---|---|---|---|---|")
         for k in P:
             for s_ in SENS:
-                d = [fixed_sens(P[k][f], Y[f], s_, seed=a.seed) for f in P[k]]
+                if a.platt == "oof" and src.get(k) == "outside":
+                    d = []
+                    for f in P[k]:
+                        yc, pc = CAL[k][f]
+                        g = platt_fit(pc, yc)
+                        d.append(at_threshold(Q[k][f], Y[f], sens_threshold(g(pc), yc, s_)))
+                else:
+                    d = [fixed_sens(P[k][f], Y[f], s_, seed=a.seed) for f in P[k]]
                 mm = lambda m: np.mean([x[m] for x in d])
                 L.append(f"| {labels[k]} | {s_:.0%} | {mm('sens'):.3f} | {mm('spec'):.3f} | "
                          f"{mm('ppv'):.3f} | {mm('npv'):.3f} | {mm('flag'):.3f} |")
@@ -427,7 +494,11 @@ def main():
 
     # ---- subgroups
     if "subgroups" in parts:
-        subs = {gname[g]: group == g for g in order}
+        subs = {gname[g] + (" (not pre-specified)" if gname[g] == "Other surgery" else ""): group == g
+                for g in order}
+        if "sex_M" in names:
+            male = C["X"][:, names.index("sex_M")] == 1
+            subs["Male"], subs["Female"] = male, ~male
         subs["Age >= 65"] = age >= 65
         subs["Emergency surgery"] = emop == 1
         subs["CKD (eGFR < 60)"] = egfr < 60

@@ -12,11 +12,17 @@ Waves (Section 9 of the protocol):
      random-search controls (repeat 1, 10 seeds)
   3  secondary outcomes (stage >= 2, stage 3): M1, M2 (10 seeds), M4/M6/M8, M5
   4  baseline sensitivity (90 and 7 days): M1, M2, M4
+  5  stricter exclusion of pre-existing kidney failure (cr2_z49, cr4_z49_n18): M1, M2, M4 (Section 7.8)
+  6  the 47 preoperative variables (preop2): M1, M2, M4 (Section 2)
+  7  exploratory ablation of M1 (not prespecified): the cultural-memetic search with ARD weights
+     (CM-KELM-ARD, 10 seeds), to complete the 2 x 2 design search (plain DE / cultural-memetic)
+     x encoding (mask / ARD) with M1, M2 and M3
 Every line sets CMKELM_CV (and CMKELM_OUTCOME / CMKELM_BASELINE_DAYS); outputs go to preds_cv/.
 """
 import argparse
 
-COMMON = "--m 1000 --esrd cr4_z49 --features eos2 --outdir preds_cv"
+COHORT = "--esrd {esrd} --features {feat}"
+COMMON = "--m 1000 " + COHORT + " --outdir preds_cv"
 DE = "--pop 20 --gen 23 --no-cultural --no-memetic"          # plain DE, 480 evaluations
 
 
@@ -33,20 +39,29 @@ def folds():
     return [(r, k) for r in (1, 2) for k in range(1, 6)]
 
 
-def m1(r, k, s, b, **kw):
-    return f"{env(r, k, **kw)} python -u run_fullcohort_cmkelm_v4.py --backend {b} {DE} --ard --penalty 0 --seed {s} {COMMON}"
+def m1(r, k, s, b, esrd="cr4_z49", feat="eos2", **kw):
+    c = COMMON.format(esrd=esrd, feat=feat)
+    return f"{env(r, k, **kw)} python -u run_fullcohort_cmkelm_v4.py --backend {b} {DE} --ard --penalty 0 --seed {s} {c}"
 
 
-def m2(r, k, s, b, **kw):
-    return f"{env(r, k, **kw)} python -u run_fullcohort_cmkelm_v4.py --backend {b} {DE} --seed {s} {COMMON}"
+def m2(r, k, s, b, esrd="cr4_z49", feat="eos2", **kw):
+    c = COMMON.format(esrd=esrd, feat=feat)
+    return f"{env(r, k, **kw)} python -u run_fullcohort_cmkelm_v4.py --backend {b} {DE} --seed {s} {c}"
 
 
 def m3(r, k, s, b):
-    return f"{env(r, k)} python -u run_fullcohort_cmkelm_v4.py --backend {b} --pop 20 --gen 15 --seed {s} {COMMON}"
+    c = COMMON.format(esrd="cr4_z49", feat="eos2")
+    return f"{env(r, k)} python -u run_fullcohort_cmkelm_v4.py --backend {b} --pop 20 --gen 15 --seed {s} {c}"
 
 
-def base(r, k, **kw):
-    return f"{env(r, k, **kw)} python -u run_baselines_preds.py --grid-m 1000 --wide-grid --esrd cr4_z49 --features eos2 --outdir preds_cv"
+def m3ard(r, k, s, b):
+    c = COMMON.format(esrd="cr4_z49", feat="eos2")
+    return f"{env(r, k)} python -u run_fullcohort_cmkelm_v4.py --backend {b} --pop 20 --gen 15 --ard --penalty 0 --seed {s} {c}"
+
+
+def base(r, k, esrd="cr4_z49", feat="eos2", **kw):
+    return (f"{env(r, k, **kw)} python -u run_baselines_preds.py --grid-m 1000 --wide-grid --esrd {esrd} "
+            f"--features {feat} --outdir preds_cv")
 
 
 def gp(r, k, **kw):
@@ -89,6 +104,17 @@ def main():
             S += [m1(r, k, s, b, bdays=bd) for r, k in folds() for s in seeds10]
             S += [m2(r, k, s, b, bdays=bd) for r, k in folds() for s in seeds10]
             O += [base(r, k, bdays=bd) for r, k in folds()]
+    elif a.wave == 5:
+        for es in ("cr2_z49", "cr4_z49_n18"):
+            S += [m1(r, k, s, b, esrd=es) for r, k in folds() for s in seeds10]
+            S += [m2(r, k, s, b, esrd=es) for r, k in folds() for s in seeds10]
+            O += [base(r, k, esrd=es) for r, k in folds()]
+    elif a.wave == 6:
+        S += [m1(r, k, s, b, feat="preop2") for r, k in folds() for s in seeds10]
+        S += [m2(r, k, s, b, feat="preop2") for r, k in folds() for s in seeds10]
+        O += [base(r, k, feat="preop2") for r, k in folds()]
+    elif a.wave == 7:
+        S += [m3ard(r, k, s, b) for r, k in folds() for s in seeds10]
     lines = (S if a.part in ("search", "all") else []) + (O if a.part in ("other", "all") else [])
     print("\n".join(lines))
 

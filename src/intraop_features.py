@@ -135,6 +135,28 @@ def med_flags(meds, spec):
     return cols
 
 
+def make_dummy(data_dir, seed=0):
+    """Synthetic operations and labs (inspire_preprocessing.load_raw_tables(dummy=True)) and an
+    intraoperative vitals table for the smoke test; writes vitals.csv.gz to data_dir."""
+    from inspire_preprocessing import load_raw_tables
+    t = load_raw_tables(dummy=True)
+    operations, labs = t["operations"], t["labs"]
+    rng = np.random.default_rng(seed)
+    rows = []
+    for _, op in operations.iterrows():
+        times = np.arange(int(op["anstart_time"]), int(op["anend_time"]) + 1, 5)
+        for item in sorted(NEEDED):
+            lo, hi = VALID.get(item, (0.0, 100.0))
+            k = len(times) if item in MONITOR else max(1, len(times) // 10)
+            tt = rng.choice(times, k, replace=False) if k < len(times) else times
+            for c in tt:
+                rows.append((op["op_id"], int(c), item, float(rng.uniform(lo, hi))))
+    pd.DataFrame(rows, columns=["op_id", "chart_time", "item_name", "value"]).to_csv(
+        os.path.join(data_dir, "vitals.csv.gz"), index=False)
+    t["medications"].to_csv(os.path.join(data_dir, "medications.csv.gz"), index=False)
+    return operations, labs
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", default=DATA_DIR)
@@ -145,7 +167,6 @@ def main():
     t0 = time.time()
 
     if a.dummy:
-        from explore_vitals_esrd import make_dummy
         data_dir = tempfile.mkdtemp()
         operations, labs = make_dummy(data_dir)
     else:

@@ -8,7 +8,7 @@ Reads the held-out predictions of preds_cv/ and writes aggregate tables only.
   - H1 (M1 > M4) and H2 (M1 > M2) on AUPRC: corrected resampled t-test over the 10 fold-level
     differences, one-sided, Holm over the two; Shapiro-Wilk and a normal quantile plot of the
     differences (diagnostic); paired bootstrap of the pooled predictions (sensitivity);
-  - secondary: AUROC for H1-H2; M1 against M2-M8 (two-sided, Holm over seven, both metrics);
+  - secondary: AUROC for H1-H2; M1 against M2-M8 (two-sided, Holm over the eight models M2-M8, both metrics);
     M1 against M5 with its CI.
 Search models are averaged over their seeds within each fold (top-5 ensembles for plain DE,
 island ensembles for CM-KELM and the random-search controls).
@@ -43,12 +43,19 @@ MODELS = {
     "LGBM": ("LightGBM", "lightgbm__{tag}.npz"),
     "RS-ARD": ("Random search, ARD weights", "cmkelm_m1000*_randsearch_ard_n500_s*__{tag}__popens_islands.npz"),
     "RS-mask": ("Random search, masks", "cmkelm_m1000*_randsearch_n500_s*__{tag}__popens_islands.npz"),
+    # exploratory ablation of M1 (wave 7): cultural-memetic search, top-5 ensembles as M1 and M2
+    "CM-ARD": ("CM-KELM-ARD (top-5)", "cmkelm_m1000*_ard_pen0_p20_g15_s*__{tag}__popens_topk5.npz"),
+    "M3-top5": ("CM-KELM (top-5)", "cmkelm_m1000*_p20_g15_s*__{tag}__popens_topk5.npz"),
 }
-EXCLUDE = {"M3": r"(nocult|nomem|ard|randsearch|_ad|_mm)", "M2": r"_ard_"}
+EXCLUDE = {"M3": r"(nocult|nomem|ard|randsearch|_ad|_mm)", "M2": r"_ard_",
+           "M3-top5": r"(nocult|nomem|ard|randsearch|_ad|_mm)", "CM-ARD": r"(nocult|nomem|randsearch|_ad|_mm)"}
+
+
+COHORT = "esrd_eos2"   # set by --cohort (e.g. esrd-cr2_z49_eos2, esrd-cr4_z49_n18_eos2, esrd_preop2)
 
 
 def fold_tag(r, k, outcome, bdays):
-    return f"esrd_eos2_cv{r}{k}" + ("" if outcome == "aki" else f"_{outcome}") + ("" if bdays == 365 else f"_b{bdays}")
+    return f"{COHORT}_cv{r}{k}" + ("" if outcome == "aki" else f"_{outcome}") + ("" if bdays == 365 else f"_b{bdays}")
 
 
 def load_model(mid, outcome, bdays):
@@ -117,12 +124,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--outcome", default="aki", choices=["aki", "st2", "st3"])
     ap.add_argument("--baseline-days", type=int, default=365)
-    ap.add_argument("--n-boot", type=int, default=2000)
+    ap.add_argument("--n-boot", type=int, default=10000)
+    ap.add_argument("--cohort", default="esrd_eos2", help="cohort tag of the prediction files")
     ap.add_argument("--preds", default="preds_cv")
     ap.add_argument("--out", default="cv_primary")
     a = ap.parse_args()
-    global D
-    D = a.preds
+    global D, COHORT
+    D, COHORT = a.preds, a.cohort
     rng = np.random.default_rng(0)
     data = {m: load_model(m, a.outcome, a.baseline_days) for m in MODELS}
     data = {m: v for m, v in data.items() if v}

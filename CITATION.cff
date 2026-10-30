@@ -2,6 +2,8 @@ cff-version: 1.2.0
 message: "If you use this software, please cite the article and this software release."
 title: "DE-KELM: evolutionary ensembles of Nyström kernel extreme learning machines for postoperative acute kidney injury prediction (code)"
 version: 1.0.0
+date-released: "2026-11-04"
+repository-code: "https://github.com/Biomedical-Engineering-Laboratory-NTUA/cm-kelm-aki"
 license: MIT
 authors:
   - family-names: Digalakis
@@ -22,3 +24,22 @@ authors:
     given-names: Dimitrios D.
     orcid: "https://orcid.org/0000-0001-7942-1788"
 doi: 10.5281/zenodo.23758711
+preferred-citation:
+  type: article
+  title: "Evolutionary Ensembles of Nyström Kernel Extreme Learning Machines for Postoperative Acute Kidney Injury Prediction: An Equal-Budget Study of Search Complexity"
+  status: submitted
+  journal: "IEEE Journal of Biomedical and Health Informatics"
+  year: 2026
+  authors:
+    - family-names: Digalakis
+      given-names: Jason
+    - family-names: Cafaro
+      given-names: Massimo
+    - family-names: Chatzistamatiou
+      given-names: Theofanis
+    - family-names: Vezakis
+      given-names: Ioannis
+    - family-names: Matsopoulos
+      given-names: George K.
+    - family-names: Koutsouris
+      given-names: Dimitrios D.

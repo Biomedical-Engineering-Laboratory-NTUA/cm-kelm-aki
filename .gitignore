@@ -31,12 +31,15 @@ cv_cache/
 cv_done/
 preds_cv/
 preds_cv_val/
-preds_cv_m1bak/
 preds_gpshap/
 preds_gpshap_val/
 gp_models/
 interp_cv/
+preds_cv_oof/
+results_v18/
 tasks_*.txt
 # aggregate results of the confirmatory analysis are kept
 !results/confirmatory/*.csv
 !results/confirmatory/*.png
+!results/confirmatory/first_analysis_2026-10-28/*.csv
+!results/confirmatory/first_analysis_2026-10-28/*.png

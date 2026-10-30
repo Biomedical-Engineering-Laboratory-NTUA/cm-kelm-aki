@@ -57,6 +57,11 @@ pre-existing kidney failure excluded).
 | 4 | Baseline windows 90 and 7 days: M1, M2 searches, baselines | 420 |
 | Rerun | M1 primary searches, storing the ARD weights (identical predictions) | 100 |
 | Interpretability | Permutation importance (10 folds), SHAP (fold 11), GP refit (fold 11) | 11 |
+| 5 | Stricter exclusions (cr2_z49, cr4_z49_n18): M1, M2 searches (10 seeds x 10 folds each), M4/M6/M8/LightGBM | 420 |
+| 6 | 47 preoperative variables (preop2): M1, M2 searches, M4/M6/M8/LightGBM | 210 |
+| Calibration sets | 3-fold out-of-fold predictions of every outer training set (cv_oof.py) | 10 |
+| Interpretability (protocol) | Permutation importance with 10 permutations (10 folds), SHAP (fold 11), GP SHAP | 11 |
+| 7 | Exploratory ablation: CM-KELM search with ARD weights (10 seeds × 10 folds; not prespecified) | 100 |
 
 The searches ran on two NVIDIA RTX 6000 Ada GPUs in double precision. Each M1/M2 search
 of 480 evaluations took about 3–4 min.

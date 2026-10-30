@@ -37,10 +37,10 @@ Fold-level differences: H1: +0.1198, +0.0942, +0.0850, +0.0655, +0.0919, +0.0915
 
 Sensitivity, paired bootstrap of the pooled predictions (AUPRC difference, 95% CI, one-sided p):
 
-- H1, repeat 1: +0.0917 [+0.0758, +0.1063], p = 0.0004998 (2000 replicates)
-- H1, repeat 2: +0.0942 [+0.0791, +0.1094], p = 0.0004998 (2000 replicates)
-- H2, repeat 1: +0.0336 [+0.0223, +0.0454], p = 0.0004998 (2000 replicates)
-- H2, repeat 2: +0.0329 [+0.0221, +0.0427], p = 0.0004998 (2000 replicates)
+- H1, repeat 1: +0.0917 [+0.0763, +0.1069], p = 9.999e-05 (10000 replicates)
+- H1, repeat 2: +0.0942 [+0.0789, +0.1087], p = 9.999e-05 (10000 replicates)
+- H2, repeat 1: +0.0336 [+0.0222, +0.0452], p = 9.999e-05 (10000 replicates)
+- H2, repeat 2: +0.0329 [+0.0226, +0.0430], p = 9.999e-05 (10000 replicates)
 
 ## Secondary: M1 against the other models (two-sided corrected t-test; Holm over the models available)
 

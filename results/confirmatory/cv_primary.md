@@ -18,6 +18,7 @@ Outer cross-validation 5 folds x 2 repeats (protocol, Section 4). Aggregate resu
 | LGBM LightGBM | 10/10 | 1-1 |
 | RS-ARD Random search, ARD weights | 5/10 | 10-10 |
 | RS-mask Random search, masks | 5/10 | 10-10 |
+| M3-top5 CM-KELM (top-5) | 10/10 | 5-5 |
 
 ## Discrimination (mean of 10 folds with corrected 95% CI; pooled per repeat)
 
@@ -35,6 +36,7 @@ Outer cross-validation 5 folds x 2 repeats (protocol, Section 4). Aggregate resu
 | LGBM LightGBM | 0.3853 [0.3644, 0.4061] | 0.8885 [0.8814, 0.8957] | 0.3896 / 0.3765 | 0.8881 / 0.8887 |
 | RS-ARD Random search, ARD weights | 0.3204 [0.2754, 0.3653] | 0.8840 [0.8758, 0.8921] | 0.3182 / - | 0.8839 / - |
 | RS-mask Random search, masks | 0.3317 [0.2909, 0.3725] | 0.8836 [0.8757, 0.8916] | 0.3298 / - | 0.8836 / - |
+| M3-top5 CM-KELM (top-5) | 0.3401 [0.3158, 0.3645] | 0.8848 [0.8791, 0.8905] | 0.3350 / 0.3417 | 0.8838 / 0.8855 |
 
 ## Confirmatory hypotheses (AUPRC; one-sided; Holm over H1-H2)
 
@@ -47,10 +49,10 @@ Fold-level differences: H1: +0.0962, +0.0569, +0.0930, +0.0858, +0.1012, +0.0835
 
 Sensitivity, paired bootstrap of the pooled predictions (AUPRC difference, 95% CI, one-sided p):
 
-- H1, repeat 1: +0.0864 [+0.0742, +0.0985], p = 0.0004998 (2000 replicates)
-- H1, repeat 2: +0.0740 [+0.0613, +0.0862], p = 0.0004998 (2000 replicates)
-- H2, repeat 1: +0.0142 [+0.0050, +0.0235], p = 0.002999 (2000 replicates)
-- H2, repeat 2: +0.0131 [+0.0046, +0.0219], p = 0.001999 (2000 replicates)
+- H1, repeat 1: +0.0864 [+0.0738, +0.0990], p = 9.999e-05 (10000 replicates)
+- H1, repeat 2: +0.0740 [+0.0617, +0.0866], p = 9.999e-05 (10000 replicates)
+- H2, repeat 1: +0.0142 [+0.0047, +0.0235], p = 0.0017 (10000 replicates)
+- H2, repeat 2: +0.0131 [+0.0044, +0.0222], p = 0.0018 (10000 replicates)
 
 ## Secondary: M1 against the other models (two-sided corrected t-test; Holm over the models available)
 

@@ -18,6 +18,8 @@ The cohort tag of the output files becomes e.g. esrd_eos2_cv13 or esrd_eos2_cv13
     python outer_cv.py --prepare          # build the cache (patient-level, server only: cv_cache/)
     python outer_cv.py --balance          # aggregate balance of every fold (Section 4)
     python outer_cv.py --dummy --balance  # self-test
+    python outer_cv.py --prepare --esrd cr2_z49           # cohorts of the sensitivity analyses
+    python outer_cv.py --prepare --features preop2        # (Section 7.8 and Section 2)
 """
 import argparse
 import os
@@ -148,9 +150,12 @@ if __name__ == "__main__":
     ap.add_argument("--prepare", action="store_true")
     ap.add_argument("--balance", action="store_true")
     ap.add_argument("--baseline-days", type=int, default=365)
+    ap.add_argument("--esrd", default="cr4_z49", help="exclusion rule: cr4_z49 (main), cr2_z49, cr4_z49_n18")
+    ap.add_argument("--features", default="eos2", help="eos2 (93 variables, main) or preop2 (47 preoperative)")
     ap.add_argument("--dummy", action="store_true")
     a = ap.parse_args()
-    d = prepare(dummy=a.dummy, baseline_days=a.baseline_days, use_cache=not a.prepare)
+    d = prepare(dummy=a.dummy, esrd=a.esrd, features=a.features, baseline_days=a.baseline_days,
+                use_cache=not a.prepare)
     print(f"cohort {d['tag']}: n = {len(d['stage'])}, with stage {int(np.isfinite(d['stage']).sum())}, "
           f"{d['X'].shape[1]} variables")
     if a.balance:

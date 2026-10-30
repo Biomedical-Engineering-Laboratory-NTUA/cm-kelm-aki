@@ -9,10 +9,11 @@ Code for the article
 > Kidney Injury Prediction: An Equal-Budget Study of Search Complexity," submitted to
 > *IEEE Journal of Biomedical and Health Informatics*.
 
-Differential evolution with population ensembles (DE-KELM) jointly selects the input variables and
-tunes a class-weighted Nyström kernel extreme learning machine (KELM). A variant specified first,
-CM-KELM, adds an island model, a cultural belief space (normative, situational, topographic and
-domain knowledge) and a Gaussian memetic step; its component ablation (`--no-cultural`,
+Differential evolution with population ensembles jointly selects (DE-KELM) or continuously weights
+(DE-KELM-ARD, automatic relevance determination) the input variables and tunes a class-weighted
+Nyström kernel extreme learning machine (KELM). A variant specified first, CM-KELM, adds a
+cultural belief space (normative and situational knowledge, and topographic knowledge in the form
+of four islands; age and creatinine are protected) and a Gaussian memetic step; its component ablation (`--no-cultural`,
 `--no-memetic`) shows that plain DE suffices. The controls at equal budget reproduce the main
 findings: with a binary variable mask, ensembles of random variable subsets do as well as evolved
 ones (`random_search.py`); with continuous per-variable kernel weights (`--ard`), random sampling
@@ -47,7 +48,7 @@ pip install -r requirements.txt
 pip install cupy-cuda12x        # optional, GPU fitness (match your CUDA version)
 ```
 
-Tested with Python 3.14 and CuPy on an NVIDIA RTX 6000 Ada; the CPU pipeline and smoke test also run on Python 3.11.
+Tested with Python 3.11–3.14; the analyses of the article ran with Python 3.14 and CuPy on NVIDIA RTX 6000 Ada GPUs (exact versions in `requirements-lock.txt`).
 
 ## Quick check without data
 
@@ -96,26 +97,11 @@ MIT (see `LICENSE`). The files in `cpp/` and `dl/` keep their authors' MIT heade
 carries its own MIT license (M. Caforio). If you use the code, please cite the article and the software release
 (`CITATION.cff`).
 
-## Confirmatory cross-validation (pre-registered)
+## Confirmatory cross-validation (prespecified)
 
-The registered protocol is in `docs/PROTOCOL_confirmatory.md` and its execution notes are
-in `docs/PROTOCOL_deviations.md`. Run all commands from `src/`, with `INSPIRE_DIR`
-pointing to the INSPIRE 1.4.2 files.
-
-```bash
-python outer_cv.py --prepare --balance           # cohort cache, KDIGO stages, fold balance
-python cv_tasks.py --help                         # task lists of waves 1-4 (searches and baselines)
-sbatch --array=1-<n>%1 --gres=gpu:1 ../slurm/cv_array.sh <task file>  # one task per line
-python cv_eval.py --outcome aki --n-boot 2000 --out cv_primary         # H1, H2, secondary
-python cv_eval.py --outcome st2 --out cv_st2; python cv_eval.py --outcome st3 --out cv_st3
-python cv_eval.py --outcome aki --baseline-days 90 --out cv_b90        # also 7
-python cv_secondary.py --outcome aki --out cv_sec_aki                  # calibration, utility, subgroups
-sbatch --array=0-9%4 ../slurm/interp_array.sh                          # permutation importance, SHAP
-python run_gp_ard.py --esrd cr4_z49 --features eos2 --save-model gp_models   # with CMKELM_CV=1-1
-python gp_shap.py --models gp_models --fold 11
-python cv_interp.py --aggregate --out cv_interp_aki
-python fig_cv_paper.py --out fig_cv_calib_dca
-```
-
-Only aggregate results leave the server. The cohort cache (`cv_cache/`), the predictions
-(`preds_cv*/`) and the fitted models are patient-level and are never committed.
+The protocol is in `docs/PROTOCOL_confirmatory.md` (committed before the confirmatory runs, commit
+`ddd8bd6`); its execution notes and all deviations are in `docs/PROTOCOL_deviations.md`. The
+commands of every table and figure of the article are in `docs/REPRODUCE.md`, and the runs in
+`docs/RUNS.md`. Only aggregate results leave the analysis server (`results/confirmatory/`); the
+cohort cache (`cv_cache/`), the predictions (`preds_cv*/`) and the fitted models are
+patient-level and are never committed.
