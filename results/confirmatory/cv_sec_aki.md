@@ -38,7 +38,7 @@ Outer CV, two repeats of five folds (protocol Sections 7-9). Recalibration: Plat
 | RS-mask Random search, masks (test-CV) | 0.1656 [0.1637, 0.1674] | 0.0380 [0.0368, 0.0392] | -2.673 | 2.966 | 0.352 | -0.000 | 0.998 | 0.007 | 0.0380 |
 | M3-top5 CM-KELM (top-5) (test-CV) | 0.1651 [0.1629, 0.1672] | 0.0379 [0.0371, 0.0386] | -2.672 | 2.972 | 0.352 | -0.000 | 0.998 | 0.007 | 0.0379 |
 
-Raw outputs of the kernel models are not probabilities (KELM regression scores, clipped to [0, 1] for the raw Brier); compare models after recalibration.
+Raw outputs of the kernel models are not probabilities (logistic function of the class-weighted KELM output); compare models after recalibration.
 
 ## Risk thresholds (recalibrated; mean of folds)
 
@@ -132,7 +132,7 @@ Net benefit, M1 minus comparator (corrected t-test, two-sided):
 
 ## Decision curves
 
-See results_v18/cv_sec_aki_dca.png (pooled recalibrated predictions, repeat 1 solid, repeat 2 dashed).
+See cv_sec_aki_dca.png (pooled recalibrated predictions, repeat 1 solid, repeat 2 dashed).
 
 ## Subgroups (discrimination; mean of folds, pooled AUPRC per repeat in the csv)
 

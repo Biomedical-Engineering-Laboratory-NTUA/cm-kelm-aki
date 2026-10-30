@@ -18,6 +18,9 @@ Outer cross-validation 5 folds x 2 repeats (protocol, Section 4). Aggregate resu
 | LGBM LightGBM | 10/10 | 1-1 |
 | RS-ARD Random search, ARD weights | 5/10 | 10-10 |
 | RS-mask Random search, masks | 5/10 | 10-10 |
+| RS-ARD-isl Random search, ARD weights (island ensembles) | 5/10 | 10-10 |
+| RS-mask-isl Random search, masks (island ensembles) | 5/10 | 10-10 |
+| CM-ARD CM-KELM-ARD (top-5) | 10/10 | 10-10 |
 | M3-top5 CM-KELM (top-5) | 10/10 | 5-5 |
 
 ## Discrimination (mean of 10 folds with corrected 95% CI; pooled per repeat)
@@ -34,8 +37,11 @@ Outer cross-validation 5 folds x 2 repeats (protocol, Section 4). Aggregate resu
 | M8a Logistic regression | 0.2602 [0.2501, 0.2703] | 0.8564 [0.8523, 0.8606] | 0.2586 / 0.2569 | 0.8563 / 0.8566 |
 | M8b Random forest | 0.3469 [0.3238, 0.3699] | 0.8822 [0.8751, 0.8893] | 0.3471 / 0.3416 | 0.8830 / 0.8812 |
 | LGBM LightGBM | 0.3853 [0.3644, 0.4061] | 0.8885 [0.8814, 0.8957] | 0.3896 / 0.3765 | 0.8881 / 0.8887 |
-| RS-ARD Random search, ARD weights | 0.3204 [0.2754, 0.3653] | 0.8840 [0.8758, 0.8921] | 0.3182 / - | 0.8839 / - |
-| RS-mask Random search, masks | 0.3317 [0.2909, 0.3725] | 0.8836 [0.8757, 0.8916] | 0.3298 / - | 0.8836 / - |
+| RS-ARD Random search, ARD weights | 0.3190 [0.2746, 0.3635] | 0.8837 [0.8753, 0.8920] | 0.3176 / - | 0.8836 / - |
+| RS-mask Random search, masks | 0.3342 [0.2927, 0.3756] | 0.8839 [0.8756, 0.8922] | 0.3320 / - | 0.8838 / - |
+| RS-ARD-isl Random search, ARD weights (island ensembles) | 0.3204 [0.2754, 0.3653] | 0.8840 [0.8758, 0.8921] | 0.3182 / - | 0.8839 / - |
+| RS-mask-isl Random search, masks (island ensembles) | 0.3317 [0.2909, 0.3725] | 0.8836 [0.8757, 0.8916] | 0.3298 / - | 0.8836 / - |
+| CM-ARD CM-KELM-ARD (top-5) | 0.3551 [0.3318, 0.3784] | 0.8895 [0.8835, 0.8954] | 0.3534 / 0.3520 | 0.8889 / 0.8900 |
 | M3-top5 CM-KELM (top-5) | 0.3401 [0.3158, 0.3645] | 0.8848 [0.8791, 0.8905] | 0.3350 / 0.3417 | 0.8838 / 0.8855 |
 
 ## Confirmatory hypotheses (AUPRC; one-sided; Holm over H1-H2)

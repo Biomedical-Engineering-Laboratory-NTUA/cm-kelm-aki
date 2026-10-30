@@ -36,7 +36,6 @@ preds_gpshap_val/
 gp_models/
 interp_cv/
 preds_cv_oof/
-results_v18/
 tasks_*.txt
 # aggregate results of the confirmatory analysis are kept
 !results/confirmatory/*.csv

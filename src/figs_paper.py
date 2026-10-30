@@ -22,7 +22,7 @@ def fmt_p(p):
     return "<0.001" if p < 0.001 else f"{p:.2g}" if p < 0.01 else f"{p:.2f}"
 
 
-# ---------- Fig. S2: discrimination with CIs (eos2 test set) ----------
+# ---------- discrimination with CIs (eos2 test set) ----------
 import sys
 from parse_stats import parse
 STATS = sys.argv[1] if len(sys.argv) > 1 else "stats_main.md"   # stats_eval.py output of the main comparison
@@ -47,7 +47,7 @@ axs[1].set_xlim(0.22, 0.47)
 fig.tight_layout()
 fig.savefig(OUT + "f1_discrimination.pdf")
 
-# ---------- Fig. 2: paired differences vs grid-tuned KELM (Holm p) ----------
+# ---------- paired differences vs grid-tuned KELM (Holm p) ----------
 D = [(k, *_R[k]["dauroc"], _R[k]["p_auroc"], *_R[k]["dauprc"], _R[k]["p_auprc"]) for k in _ORDER if "dauroc" in _R[k]]
 fig, axs = plt.subplots(1, 2, figsize=(PAGEW, 2.8), sharey=True)
 for k, (ax, o, title) in enumerate(zip(axs, (1, 5), ("ΔAUROC (95% CI)", "ΔAUPRC (95% CI)"))):
@@ -66,7 +66,7 @@ axs[0].set_yticks(range(len(D)), [r[0] for r in D])
 fig.tight_layout(w_pad=5)
 fig.savefig(OUT + "f2_forest.pdf")
 
-# ---------- Fig. 3: preoperative vs end of surgery (single column) ----------
+# ---------- preoperative vs end of surgery (single column) ----------
 fig, axs = plt.subplots(1, 2, figsize=(COLW, 2.3))
 lab = ["Preop.\n(47 var.)", "End of\nsurgery\n(93 var.)"]
 data = {"AUROC": {"Grid-tuned KELM": (.851, .876), "CM-KELM": (.863, .885), "XGBoost": (.866, .892)},
@@ -86,7 +86,7 @@ fig.legend(*axs[0].get_legend_handles_labels(), loc="lower center", ncol=3, fram
 fig.tight_layout(rect=(0, 0.08, 1, 1), w_pad=1.0)
 fig.savefig(OUT + "f3_preop_eos.pdf")
 
-# ---------- Fig. 5: selection frequency (single column) ----------
+# ---------- selection frequency (single column) ----------
 F = [("Age", 10, 0), ("Creatinine", 10, 0), ("Urea nitrogen", 10, 0), ("Urological surgery", 10, 0),
      ("Anesthesia duration", 10, 1), ("Arterial line", 9, 1), ("Urine output, mL/kg/h", 9, 1), ("ASA class", 8, 0),
      ("Internal medicine", 8, 0), ("Cardiac-output monitoring", 7, 1), ("Cardiothoracic surgery", 7, 0),
@@ -105,7 +105,7 @@ fig.legend(handles=[Patch(color="#5c6bc0", label="preoperative"), Patch(color=HL
 fig.tight_layout(rect=(0, 0, 1, 0.93))
 fig.savefig(OUT + "f5_features.pdf")
 
-# ---------- Fig. S1: attrition ----------
+# ---------- attrition ----------
 fig, ax = plt.subplots(figsize=(PAGEW, 3.0))
 ax.axis("off"); ax.set_xlim(0, 10); ax.set_ylim(0, 10.7)
 main = [("INSPIRE: 130,960 operations\n99,886 patients", 9.1), ("129,594 operations", 6.9), ("64,667 operations", 4.7),
@@ -132,7 +132,7 @@ ax.text(7.35, 0.75, "Stratified 70/30 split\nTraining 35,338 (1,725 AKI) · Test
 fig.tight_layout()
 fig.savefig(OUT + "f0_attrition.pdf")
 
-# ---------- Fig. S3: multimeme evidence ----------
+# ---------- multimeme evidence ----------
 fig, ax = plt.subplots(figsize=(PAGEW, 2.5))
 rows = [("Primary: fuzzy + credit vs static\nseeds 1–10 · island-ensemble AUPRC", 0.0063, "p = 0.16", "#9e9e9e"),
         ("Tabu/GLS meme vs static\nseeds 1–10 · single-run AUPRC", 0.0071, "p = 0.23", "#f48fb1"),
@@ -151,7 +151,7 @@ ax.set_xlabel("ΔAUPRC vs static CM-KELM (paired Wilcoxon over seeds)")
 fig.tight_layout()
 fig.savefig(OUT + "f6_multimeme.pdf")
 
-# ---------- Fig. 6: timing (single column, two rows) ----------
+# ---------- timing (single column, two rows) ----------
 fig, (a, b) = plt.subplots(2, 1, figsize=(COLW, 3.8), gridspec_kw=dict(height_ratios=[1.1, 1]))
 cpu = [(96, 5.15), (300, 16.89), (1200, 62.16)]; gpu = [(300, 2.95), (750, 7.19)]
 for d, c, l, m in [(cpu, "#546e7a", "CPU (24-core EPYC 9224, FP64)", "o"), (gpu, HL, "GPU (RTX 6000 Ada, FP64)", "s")]:

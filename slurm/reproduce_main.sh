@@ -1,5 +1,5 @@
 #!/bin/bash
-# Main end-of-surgery results of the paper (Table 3, Figs. 2-5). Run from src/ after
+# Development-phase end-of-surgery results (docs/REPRODUCE.md, section D2-D3). Run from src/ after
 # INSPIRE_DIR is set and features_intraop.csv.gz has been built (see docs/REPRODUCE.md).
 set -e
 mkdir -p logs preds preds_ens

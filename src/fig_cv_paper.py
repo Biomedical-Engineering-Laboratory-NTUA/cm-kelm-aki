@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Fig. 3 of the manuscript (confirmatory cross-validation): (a) reliability after Platt
+"""Calibration and decision-curve figure of the confirmatory cross-validation (see docs/REPRODUCE.md): (a) reliability after Platt
 recalibration fitted outside each held-out fold (out-of-fold predictions of the outer training
 set; validation predictions for the GP and the FT-Transformer), as in the protocol, pooled over the 10 test folds of both
 repeats (each patient appears twice, once per repeat), 20 risk groups on a log scale;
@@ -23,7 +23,7 @@ LABEL = {"M1": "DE-KELM-ARD", "M2": "DE-KELM", "M3": "CM-KELM", "M4": "Grid-tune
          "M5": "Sparse GP (ARD)", "M6": "XGBoost", "M7": "FT-Transformer",
          "M8a": "Logistic regression", "M8b": "Random forest", "LGBM": "LightGBM"}
 STYLE = {"M1": ("#c0392b", "-", 2.0), "M2": ("#e67e22", "--", 1.2), "M3": ("#d4a017", ":", 1.2),
-         "M4": ("#7f8c8d", "-", 1.4), "M5": ("#8e44ad", "-", 1.4), "M6": ("#2471a3", "-", 1.4),
+         "M4": ("#6e2c00", "-", 1.4), "M5": ("#8e44ad", "-", 1.4), "M6": ("#2471a3", "-", 1.4),
          "M7": ("#17a589", "--", 1.2), "M8a": ("#000000", ":", 1.2), "M8b": ("#27ae60", "-.", 1.2),
          "LGBM": ("#5dade2", "--", 1.2)}
 

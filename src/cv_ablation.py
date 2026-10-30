@@ -4,7 +4,7 @@ search (plain DE / cultural-memetic) x encoding (mask / ARD), all as top-5 popul
 averaged over seeds, plus the equal-budget random-search controls (first repeat).
 Reads the per-fold table of cv_eval.py and writes a Markdown table.
 
-    python cv_ablation.py results_v18/cv_primary_w7.csv results_v18/cv_ablation
+    python cv_ablation.py cv_primary.csv cv_ablation
 """
 import sys
 import numpy as np
@@ -14,7 +14,8 @@ from scipy import stats
 d = pd.read_csv(sys.argv[1])
 out = sys.argv[2]
 LAB = {"M1": "DE + ARD (M1)", "M2": "DE + mask (M2)", "CM-ARD": "CM + ARD", "M3-top5": "CM + mask",
-       "RS-ARD": "random search + ARD", "RS-mask": "random search + mask"}
+       "RS-ARD": "random search + ARD", "RS-mask": "random search + mask",
+       "RS-ARD-isl": "random search + ARD, island ensembles", "RS-mask-isl": "random search + mask, island ensembles"}
 
 
 def nb(x, ratio=0.25):
@@ -42,7 +43,9 @@ for k in LAB:
 L += ["", "| Comparison | metric | difference [corrected 95% CI] | p (unadjusted) | folds |", "|---|---|---|---|---|"]
 for a, b, what in (("M1", "M2", "encoding, plain DE"), ("CM-ARD", "M3-top5", "encoding, cultural-memetic"),
                    ("M1", "CM-ARD", "search, ARD"), ("M2", "M3-top5", "search, mask"),
-                   ("M1", "RS-ARD", "evolution vs random, ARD"), ("M2", "RS-mask", "evolution vs random, mask")):
+                   ("M1", "RS-ARD", "evolution vs random, ARD"), ("M2", "RS-mask", "evolution vs random, mask"),
+                   ("M1", "RS-ARD-isl", "evolution vs random, ARD, island ensembles"),
+                   ("M2", "RS-mask-isl", "evolution vs random, mask, island ensembles")):
     if not (len(d[d.model == a]) and len(d[d.model == b])):
         continue
     for m in ("auprc", "auroc"):

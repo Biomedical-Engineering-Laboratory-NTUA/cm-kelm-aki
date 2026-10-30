@@ -1,4 +1,4 @@
-"""Fig. S2: paired differences of M1 from every model in the confirmatory cross-validation.
+"""Forest plot (docs/REPRODUCE.md): paired differences of M1 from every model in the confirmatory cross-validation.
     python fig_forest.py cv_primary.csv f2_cv_forest
 """
 import sys, numpy as np, pandas as pd
@@ -17,7 +17,7 @@ def holm(p):
 def diff(a,b,m):
     A=d[d.model==a].set_index(["repeat","fold"])[m]; B=d[d.model==b].set_index(["repeat","fold"])[m]
     i=A.index.intersection(B.index); return (A[i]-B[i]).values
-lab={"M2":"DE-KELM (mask)","M3":"CM-KELM","M4":"Grid-tuned KELM","M5":"Sparse GP (ARD)","M6":"XGBoost","M7":"FT-Transformer","M8a":"Logistic regression","M8b":"Random forest","LGBM":"LightGBM$^{a}$","RS-ARD":"Random search, ARD$^{b}$","RS-mask":"Random search, mask$^{c}$"}
+lab={"M2":"DE-KELM (mask)","M3":"CM-KELM","M4":"Grid-tuned KELM","M5":"Sparse GP (ARD)","M6":"XGBoost","M7":"FT-Transformer","M8a":"Logistic regression","M8b":"Random forest","LGBM":"LightGBM$^{a}$","RS-ARD":"Random search, ARD$^{b}$","RS-mask":"DE-KELM $-$ random search, mask$^{c}$"}
 fam=["M2","M3","M4","M5","M6","M7","M8a","M8b"]
 rows=[]
 for m in ["auroc","auprc"]:
@@ -37,7 +37,8 @@ for ax,m,tt in zip(axs,["auroc","auprc"],["$\\Delta$AUROC, DE-KELM-ARD minus com
         col="#c0392b" if (not np.isnan(r.holm) and r.holm<0.05) else "0.25"
         if np.isnan(r.holm): col="0.55"
         ax.plot([r.lo,r.hi],[y,y],color=col,lw=1.3); ax.plot(r["diff"],y,"s",color=col,ms=4)
-        ptxt=(f"p={r.holm:.2g}" if r.holm>=0.001 else "p<0.001") if not np.isnan(r.holm) else (f"p={r.p:.2g}" if r.p>=0.001 else "p<0.001")
+        pv=r.p if np.isnan(r.holm) else r.holm
+        ptxt="p<0.001" if pv<0.001 else (f"p={pv:.3f}" if pv<0.01 else f"p={pv:.2f}")
         ax.text(1.02,y,ptxt,transform=ax.get_yaxis_transform(),fontsize=6,va="center")
     ax.axvline(0,color="k",lw=0.7); ax.set_title(tt,fontsize=7.5); ax.tick_params(labelsize=6.5)
     ax.axhline(2.5,color="0.8",lw=0.6)

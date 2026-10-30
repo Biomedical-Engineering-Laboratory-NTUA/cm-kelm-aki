@@ -22,7 +22,8 @@ pre-existing kidney failure). Feature sets: `eos2` (93 end-of-surgery variables,
 | Fig. S2 | paired differences | `fig_forest.py cv_primary.csv` |
 | Fig. 2, Table S6 | interpretability | `cv_interp.py`, `gp_shap.py`, `cv_interp.py --aggregate`, `fig_interp.py` |
 | Table S7, Table S8, Fig. S3, Section S5 | development phase (single split), search loop | sections D1–D5 below; Fig. S3 is TikZ in the LaTeX source |
-| Table II (last rows), Table S9 | exploratory 2 × 2 ablation of M1 (search × encoding) | wave 7 → `cv_eval.py --out cv_primary_w7` → `cv_ablation.py` |
+| Table II (last rows), Table S9 | exploratory 2 × 2 ablation of M1 (search × encoding), random-search controls | wave 7 → `cv_eval.py --outcome aki` → `cv_ablation.py cv_primary.csv cv_ablation` |
+| `results/confirmatory/hyperparameters.csv` | γ, λ and kernel weights (or masks) of every ensemble member of M1–M4 and the ablation | `export_hyperparams.py` |
 
 ## Confirmatory phase
 
@@ -50,7 +51,8 @@ python cv_eval.py --baseline-days 90 --out cv_b90; python cv_eval.py --baseline-
 python cv_eval.py --cohort esrd-cr2_z49_eos2 --out cv_cr2
 python cv_eval.py --cohort esrd-cr4_z49_n18_eos2 --out cv_n18
 python cv_eval.py --cohort esrd_preop2 --out cv_preop2
-python cv_eval.py --outcome aki --out cv_primary_w7 && python cv_ablation.py cv_primary_w7.csv cv_ablation
+python cv_ablation.py cv_primary.csv cv_ablation                         # after wave 7
+python export_hyperparams.py --out ../results/confirmatory/hyperparameters.csv
 sbatch --array=0-9%2 ../slurm/oof_array.sh                            # calibration sets (cv_oof.py)
 python cv_secondary.py --outcome aki --platt oof --out cv_sec_aki      # Platt and thresholds outside the held-out fold
 python cv_secondary.py --outcome aki --platt testcv --parts calibration,thresholds --out cv_sec_aki_testcv
@@ -82,8 +84,8 @@ python -u run_dl_baselines.py --model all --esrd cr4_z49 --features eos2     # T
 python -u run_tabdl.py --model mlp --esrd cr4_z49 --features eos2            # also --model ftt
 ```
 
-The JIT classifier runs from an exported split (`export_split_csv.py`, kept in a private
-directory) with `run_jit_split.py` (K = 2–8 on seed 42, then K = 3 on seeds 43–46) and
+The JIT classifier runs from an exported split (`export_split_csv.py`, kept on the
+analysis server) with `run_jit_split.py` (K = 2–8 on seed 42, then K = 3 on seeds 43–46) and
 `seed_ensemble.py`. AUROC differences use DeLong's test and AUPRC differences a paired
 bootstrap with 10,000 replicates (`stats_eval.py`).
 

@@ -1,4 +1,4 @@
-"""Fig. 3: rank of the 15 variables with the best mean rank under the nine attribution methods.
+"""Interpretability heat map (docs/REPRODUCE.md): rank of the 15 variables with the best mean rank under the nine attribution methods.
     python fig_interp.py cv_interp_aki.csv f4_interp
 """
 import sys, numpy as np, pandas as pd
@@ -18,10 +18,10 @@ fig,ax=plt.subplots(figsize=(3.5,3.6))
 im=ax.imshow(M,cmap="viridis_r",vmin=1,vmax=40,aspect="auto")
 for i in range(M.shape[0]):
     for j in range(M.shape[1]):
-        ax.text(j,i,int(M[i,j]),ha="center",va="center",fontsize=5.5,color="white" if M[i,j]<20 else "black")
+        ax.text(j,i,int(M[i,j]),ha="center",va="center",fontsize=5.5,color="black" if M[i,j]<20 else "white")
 ax.set_yticks(range(len(top))); ax.set_yticklabels([nm.get(v,v) for v in top],fontsize=6.3)
 ax.set_xticks(range(9)); ax.set_xticklabels([short[i] for i in order],rotation=60,ha="right",fontsize=6)
 ax.axvline(4.5,color="w",lw=1.5)
-cb=fig.colorbar(im,ax=ax,shrink=0.55,pad=0.02); cb.ax.tick_params(labelsize=5.5); cb.set_label("rank (1 = most important)",fontsize=6)
+cb=fig.colorbar(im,ax=ax,shrink=0.55,pad=0.02,extend="max",ticks=[1,10,20,30,40]); cb.ax.set_yticklabels(["1","10","20","30","\u226540"]); cb.ax.tick_params(labelsize=5.5); cb.set_label("rank (1 = most important)",fontsize=6)
 fig.tight_layout(); fig.savefig(out+".pdf",bbox_inches="tight"); fig.savefig(out+".png",dpi=220,bbox_inches="tight")
 print(list(top))

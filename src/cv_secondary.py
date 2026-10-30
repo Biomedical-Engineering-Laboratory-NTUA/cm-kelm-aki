@@ -428,9 +428,8 @@ def main():
                 rows_csv.append(dict(part="calibration", model=k, fold=f"{f[0]}{f[1]}",
                                      **{f"raw_{x}": d1[x] for x in d1},
                                      **{f"recal_{x}": d2[x] for x in d2}))
-        L.append("\nRaw outputs of the kernel models are not probabilities (KELM regression "
-                 "scores, clipped to [0, 1] for the raw Brier); compare models after "
-                 "recalibration.\n")
+        L.append("\nRaw outputs of the kernel models are not probabilities (logistic function of the "
+                 "class-weighted KELM output); compare models after recalibration.\n")
         _calib_plot(Q, Y, labels, [m for m in P if m in full][:6], out)
 
     # ---- thresholds and operating points
@@ -489,7 +488,7 @@ def main():
     # ---- decision curves
     if "dca" in parts:
         _dca(Q, Y, labels, [m for m in P if m in full], out)
-        L.append(f"## Decision curves\n\nSee {out}_dca.png (pooled recalibrated predictions, "
+        L.append(f"## Decision curves\n\nSee {os.path.basename(out)}_dca.png (pooled recalibrated predictions, "
                  "repeat 1 solid, repeat 2 dashed).\n")
 
     # ---- subgroups

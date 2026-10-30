@@ -10,8 +10,9 @@ Reads the held-out predictions of preds_cv/ and writes aggregate tables only.
     differences (diagnostic); paired bootstrap of the pooled predictions (sensitivity);
   - secondary: AUROC for H1-H2; M1 against M2-M8 (two-sided, Holm over the eight models M2-M8, both metrics);
     M1 against M5 with its CI.
-Search models are averaged over their seeds within each fold (top-5 ensembles for plain DE,
-island ensembles for CM-KELM and the random-search controls).
+Search models are averaged over their seeds within each fold (top-5 ensembles for plain DE and
+the random-search controls, island ensembles for CM-KELM; top-5 ensembles of CM-KELM and island
+ensembles of random search as exploratory variants).
 
     python cv_eval.py --outcome aki --out cv_primary           # -> cv_primary.md, .csv, _qq.png
     python cv_eval.py --outcome st2 --out cv_st2
@@ -41,8 +42,12 @@ MODELS = {
     "M8a": ("Logistic regression", "logistic_regression__{tag}.npz"),
     "M8b": ("Random forest", "random_forest__{tag}.npz"),
     "LGBM": ("LightGBM", "lightgbm__{tag}.npz"),
-    "RS-ARD": ("Random search, ARD weights", "cmkelm_m1000*_randsearch_ard_n500_s*__{tag}__popens_islands.npz"),
-    "RS-mask": ("Random search, masks", "cmkelm_m1000*_randsearch_n500_s*__{tag}__popens_islands.npz"),
+    # equal-budget random-search controls (500 individuals per run, repeat 1): top-5 ensembles as M1
+    # and M2; the island-champion ensembles, used in the first evaluation, as sensitivity analysis
+    "RS-ARD": ("Random search, ARD weights", "cmkelm_m1000*_randsearch_ard_n500_s*__{tag}__popens_topk5.npz"),
+    "RS-mask": ("Random search, masks", "cmkelm_m1000*_randsearch_n500_s*__{tag}__popens_topk5.npz"),
+    "RS-ARD-isl": ("Random search, ARD weights (island ensembles)", "cmkelm_m1000*_randsearch_ard_n500_s*__{tag}__popens_islands.npz"),
+    "RS-mask-isl": ("Random search, masks (island ensembles)", "cmkelm_m1000*_randsearch_n500_s*__{tag}__popens_islands.npz"),
     # exploratory ablation of M1 (wave 7): cultural-memetic search, top-5 ensembles as M1 and M2
     "CM-ARD": ("CM-KELM-ARD (top-5)", "cmkelm_m1000*_ard_pen0_p20_g15_s*__{tag}__popens_topk5.npz"),
     "M3-top5": ("CM-KELM (top-5)", "cmkelm_m1000*_p20_g15_s*__{tag}__popens_topk5.npz"),

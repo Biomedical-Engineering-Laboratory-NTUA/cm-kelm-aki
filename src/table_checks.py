@@ -1,4 +1,4 @@
-"""Two checks of Table S2 (aggregate output only):
+"""Two checks of the development-phase variables (aggregate output only):
 1. urea nitrogen: cumulative distribution around the medians (percentile codes), overall / AKI / no AKI;
 2. urine output: share of operations without charted urine output (total 0) and missing mL/kg/h.
     python table_checks.py

@@ -1,5 +1,5 @@
 """
-Table 1 (cohort characteristics) and attrition for the paper.
+Cohort characteristics (Table I and Table S1) and attrition.
 =============================================================
 
 Uses exactly the cohort, label and 70/30 split of cohort_split.load_split
@@ -142,7 +142,7 @@ def main():
     df = pd.DataFrame(rows, columns=cols)
     df.to_csv(f"{a.out}.csv", index=False)
 
-    L = [f"# Table 1. Cohort characteristics ({a.features}, ESRD rule {a.esrd})\n",
+    L = [f"# Cohort characteristics ({a.features}, ESRD rule {a.esrd})\n",
          f"Source: {n_ops_raw} operations" + (f", {n_pat_raw} patients" if n_pat_raw else "")
          + " before criteria. Split: stratified 70/30, seed "
          f"{SPLIT_SEED} (same as all models). Raw values before imputation. "
